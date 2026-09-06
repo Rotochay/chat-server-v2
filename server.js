@@ -1,182 +1,324 @@
 const express = require("express");
 const http = require("http");
-const path = require("path");
-const { Pool } = require("pg");
 const { WebSocketServer } = require("ws");
+const { Pool } = require("pg");
 
-const PORT = process.env.PORT || 10000;
 const app = express();
 const server = http.createServer(app);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+const wss = new WebSocketServer({
+    server
 });
 
-const ALLOWED_USERS = new Set(["aayush", "hari", "aditya"]);
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+
+    ssl: process.env.DATABASE_URL
+        ? {
+            rejectUnauthorized: false
+        }
+        : false
+});
+
+const PORT = process.env.PORT || 10000;
+
+const ALLOWED_USERS = new Set([
+    "aayush",
+    "hari",
+    "aditya"
+]);
+
 const MAX_HISTORY = 200;
 const MAX_MESSAGE_LENGTH = 2000;
 
-app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/health", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ ok: true, database: "connected" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, database: "error" });
-  }
-});
+/* ---------------- DATABASE ---------------- */
 
-async function initDatabase() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is missing. Add a PostgreSQL database and set DATABASE_URL.");
-  }
+async function setupDatabase() {
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id BIGSERIAL PRIMARY KEY,
-      username TEXT NOT NULL,
-      message TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS messages (
+            id BIGSERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
 
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS messages_created_at_idx
-    ON messages (created_at DESC)
-  `);
-
-  console.log("Database ready.");
+    console.log("Database ready.");
 }
+
 
 async function getHistory() {
-  const result = await pool.query(`
-    SELECT id, username, message, created_at
-    FROM (
-      SELECT id, username, message, created_at
-      FROM messages
-      ORDER BY created_at DESC
-      LIMIT $1
-    ) recent
-    ORDER BY created_at ASC
-  `, [MAX_HISTORY]);
 
-  return result.rows;
+    const result = await pool.query(
+        `
+        SELECT
+            id,
+            username,
+            message,
+            created_at
+        FROM messages
+        ORDER BY created_at DESC, id DESC
+        LIMIT $1
+        `,
+        [MAX_HISTORY]
+    );
+
+    return result.rows.reverse();
 }
+
 
 async function saveMessage(username, message) {
-  const result = await pool.query(`
-    INSERT INTO messages (username, message)
-    VALUES ($1, $2)
-    RETURNING id, username, message, created_at
-  `, [username, message]);
 
-  return result.rows[0];
+    const result = await pool.query(
+        `
+        INSERT INTO messages
+            (username, message)
+        VALUES
+            ($1, $2)
+        RETURNING
+            id,
+            username,
+            message,
+            created_at
+        `,
+        [
+            username,
+            message
+        ]
+    );
+
+    return result.rows[0];
 }
 
-const wss = new WebSocketServer({ server });
 
-function send(ws, payload) {
-  if (ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(payload));
-  }
-}
+/* ---------------- HTTP ---------------- */
 
-function broadcast(payload) {
-  const data = JSON.stringify(payload);
-  for (const client of wss.clients) {
-    if (client.readyState === client.OPEN) {
-      client.send(data);
-    }
-  }
-}
+app.use(express.static("public"));
 
-wss.on("connection", async (ws) => {
-  ws.username = null;
 
-  try {
-    send(ws, {
-      type: "history",
-      messages: await getHistory()
-    });
-  } catch (err) {
-    console.error("History error:", err);
-    send(ws, {
-      type: "error",
-      message: "Could not load chat history."
-    });
-  }
+app.get("/health", async (req, res) => {
 
-  ws.on("message", async (raw) => {
     try {
-      const data = JSON.parse(raw.toString());
 
-      if (data.type === "identify") {
-        const username = String(data.username || "").trim().toLowerCase();
+        await pool.query("SELECT 1");
 
-        if (!ALLOWED_USERS.has(username)) {
-          send(ws, {
-            type: "error",
-            message: "That username is not allowed."
-          });
-          return;
-        }
-
-        ws.username = username;
-        send(ws, {
-          type: "identified",
-          username
+        res.json({
+            ok: true,
+            database: true
         });
-        return;
-      }
 
-      if (data.type === "message") {
-        if (!ws.username) {
-          send(ws, {
-            type: "error",
-            message: "Choose a username first."
-          });
-          return;
-        }
+    } catch (error) {
 
-        const message = String(data.message || "").trim();
+        console.error(error);
 
-        if (!message) return;
-
-        if (message.length > MAX_MESSAGE_LENGTH) {
-          send(ws, {
-            type: "error",
-            message: `Message is too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`
-          });
-          return;
-        }
-
-        const saved = await saveMessage(ws.username, message);
-
-        broadcast({
-          type: "message",
-          message: saved
+        res.status(500).json({
+            ok: false,
+            database: false
         });
-      }
-    } catch (err) {
-      console.error("WebSocket message error:", err);
-      send(ws, {
-        type: "error",
-        message: "Something went wrong."
-      });
     }
-  });
 });
 
-initDatabase()
-  .then(() => {
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`Chat server listening on port ${PORT}`);
+
+/* ---------------- WEBSOCKET ---------------- */
+
+function broadcast(data) {
+
+    const message = JSON.stringify(data);
+
+    for (const client of wss.clients) {
+
+        if (client.readyState === 1) {
+
+            client.send(message);
+        }
+    }
+}
+
+
+wss.on("connection", async (ws) => {
+
+    ws.username = null;
+
+    console.log("WebSocket connected.");
+
+    /*
+        Send existing messages immediately.
+    */
+
+    try {
+
+        const history = await getHistory();
+
+        ws.send(
+            JSON.stringify({
+                type: "history",
+                messages: history
+            })
+        );
+
+    } catch (error) {
+
+        console.error("History error:", error);
+
+        ws.send(
+            JSON.stringify({
+                type: "error",
+                message: "Could not load message history."
+            })
+        );
+    }
+
+
+    ws.on("message", async (raw) => {
+
+        let data;
+
+        try {
+
+            data = JSON.parse(raw.toString());
+
+        } catch {
+
+            return;
+        }
+
+
+        /* ---------- IDENTIFY ---------- */
+
+        if (data.type === "identify") {
+
+            const username = String(data.username || "").toLowerCase();
+
+            if (!ALLOWED_USERS.has(username)) {
+
+                ws.send(
+                    JSON.stringify({
+                        type: "error",
+                        message: "Unknown user."
+                    })
+                );
+
+                return;
+            }
+
+            ws.username = username;
+
+            console.log(
+                `${username} connected.`
+            );
+
+            return;
+        }
+
+
+        /* ---------- MESSAGE ---------- */
+
+        if (data.type === "message") {
+
+            if (!ws.username) {
+
+                ws.send(
+                    JSON.stringify({
+                        type: "error",
+                        message: "Choose a username first."
+                    })
+                );
+
+                return;
+            }
+
+
+            if (typeof data.message !== "string") {
+
+                return;
+            }
+
+
+            const message = data.message.trim();
+
+
+            if (!message) {
+
+                return;
+            }
+
+
+            if (message.length > MAX_MESSAGE_LENGTH) {
+
+                ws.send(
+                    JSON.stringify({
+                        type: "error",
+                        message: "Message is too long."
+                    })
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const saved = await saveMessage(
+                    ws.username,
+                    message
+                );
+
+                broadcast({
+                    type: "message",
+                    ...saved
+                });
+
+            } catch (error) {
+
+                console.error(
+                    "Message save error:",
+                    error
+                );
+
+                ws.send(
+                    JSON.stringify({
+                        type: "error",
+                        message: "Message could not be saved."
+                    })
+                );
+            }
+        }
     });
-  })
-  .catch((err) => {
-    console.error("Startup failed:", err);
-    process.exit(1);
-  });
+
+
+    ws.on("close", () => {
+
+        console.log(
+            `${ws.username || "Unknown user"} disconnected.`
+        );
+    });
+});
+
+
+/* ---------------- START ---------------- */
+
+setupDatabase()
+    .then(() => {
+
+        server.listen(
+            PORT,
+            () => {
+
+                console.log(
+                    `Chat server listening on port ${PORT}`
+                );
+            }
+        );
+
+    })
+    .catch((error) => {
+
+        console.error(
+            "Database setup failed:",
+            error
+        );
+
+        process.exit(1);
+    });
