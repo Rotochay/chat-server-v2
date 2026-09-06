@@ -1,367 +1,46 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Chat</title>
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat V2</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
-
-<body data-theme="pop">
-
-
-<div class="app">
-
-
-    <!-- ================= HEADER ================= -->
-
+<body>
+  <main class="app">
     <header class="topbar">
-
-        <div class="brand">
-
-            <div class="brand-icon">
-                <span></span>
-            </div>
-
-            <div class="brand-info">
-
-                <div class="brand-name">
-                    chat
-                </div>
-
-                <div class="connection">
-
-                    <span
-                        id="connectionDot"
-                        class="connection-dot"
-                    ></span>
-
-                    <span id="connectionText">
-                        connecting
-                    </span>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <button
-            id="settingsButton"
-            class="settings-button"
-            aria-label="Settings"
-        >
-
-            ⚙
-
-        </button>
-
+      <div>
+        <div class="eyebrow">PRIVATE CHAT</div>
+        <h1>chat.</h1>
+      </div>
+      <div id="status" class="status offline">OFFLINE</div>
     </header>
 
+    <section id="login" class="login">
+      <p class="hint">Choose your account.</p>
+      <div class="users">
+        <button data-user="aayush">Aayush</button>
+        <button data-user="hari">Hari</button>
+        <button data-user="aditya">Aditya</button>
+      </div>
+    </section>
 
+    <section id="chat" class="chat hidden">
+      <div id="messages" class="messages"></div>
 
-    <!-- ================= CHAT ================= -->
-
-    <main class="chat-area">
-
-
-        <div class="chat-heading">
-
-            <div class="chat-avatar">
-                C
-            </div>
-
-            <div>
-
-                <div class="chat-name">
-                    private chat
-                </div>
-
-                <div class="chat-members">
-                    Aayush · Hari · Aditya
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <section
-            id="messages"
-            class="messages"
-        ></section>
-
-
-    </main>
-
-
-
-    <!-- ================= COMPOSER ================= -->
-
-    <form
-        id="composer"
-        class="composer"
-    >
-
-        <button
-            type="button"
-            class="plus-button"
-            aria-label="More"
+      <form id="composer" class="composer">
+        <input
+          id="messageInput"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          placeholder="message..."
         >
-
-            +
-
-        </button>
-
-
-        <div class="message-input-wrapper">
-
-            <input
-                id="messageInput"
-                type="text"
-                maxlength="2000"
-                autocomplete="off"
-                placeholder="iMessage"
-            >
-
-
-            <button
-                id="sendButton"
-                type="submit"
-                class="send-button"
-                aria-label="Send"
-            >
-
-                ↑
-
-            </button>
-
-        </div>
-
-    </form>
-
-
-</div>
-
-
-
-<!-- ================= SETTINGS ================= -->
-
-<div
-    id="settingsBackdrop"
-    class="settings-backdrop"
-    hidden
->
-
-
-    <aside class="settings-panel">
-
-
-        <div class="settings-header">
-
-            <div>
-
-                <div class="settings-kicker">
-                    PERSONALIZE
-                </div>
-
-                <h1>
-                    Settings
-                </h1>
-
-            </div>
-
-
-            <button
-                id="closeSettings"
-                class="close-settings"
-                aria-label="Close"
-            >
-
-                ×
-
-            </button>
-
-        </div>
-
-
-
-        <!-- USER -->
-
-        <section class="settings-section">
-
-            <div class="section-title">
-                YOUR NAME
-            </div>
-
-
-            <div
-                id="nameSelector"
-                class="name-selector"
-            >
-
-                <button
-                    data-name="aayush"
-                >
-                    Aayush
-                </button>
-
-                <button
-                    data-name="hari"
-                >
-                    Hari
-                </button>
-
-                <button
-                    data-name="aditya"
-                >
-                    Aditya
-                </button>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- THEMES -->
-
-        <section class="settings-section">
-
-            <div class="section-title">
-                THEME
-            </div>
-
-
-            <div class="theme-list">
-
-
-                <button
-                    class="theme-option"
-                    data-theme="pop"
-                >
-
-                    <div class="theme-preview preview-pop">
-
-                        <span></span>
-                        <span></span>
-                        <span></span>
-
-                    </div>
-
-
-                    <div class="theme-info">
-
-                        <strong>
-                            Pop
-                        </strong>
-
-                        <small>
-                            Colourful & playful
-                        </small>
-
-                    </div>
-
-                </button>
-
-
-
-                <button
-                    class="theme-option"
-                    data-theme="glass"
-                >
-
-                    <div class="theme-preview preview-glass">
-
-                        <span></span>
-                        <span></span>
-                        <span></span>
-
-                    </div>
-
-
-                    <div class="theme-info">
-
-                        <strong>
-                            Glass
-                        </strong>
-
-                        <small>
-                            Dark & glossy
-                        </small>
-
-                    </div>
-
-                </button>
-
-
-
-                <button
-                    class="theme-option"
-                    data-theme="matrix"
-                >
-
-                    <div class="theme-preview preview-matrix">
-
-                        <span></span>
-                        <span></span>
-                        <span></span>
-
-                    </div>
-
-
-                    <div class="theme-info">
-
-                        <strong>
-                            Matrix
-                        </strong>
-
-                        <small>
-                            Green terminal
-                        </small>
-
-                    </div>
-
-                </button>
-
-
-            </div>
-
-        </section>
-
-
-
-        <div class="settings-note">
-
-            Theme settings are saved on this device.
-            Everyone can have their own appearance.
-
-        </div>
-
-
-    </aside>
-
-</div>
-
-
-<script src="app.js"></script>
-
+        <button type="submit">SEND</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
 </body>
-
 </html>
