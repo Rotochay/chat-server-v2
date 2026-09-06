@@ -1,350 +1,394 @@
-/* ============================================================
-   STATE
-   ============================================================ */
+/* ==========================================================================
+   CHAT SERVER — frontend
+   No credentials live here. Login is verified by the server over the socket.
+   Authentication is NEVER persisted: reload = login screen.
+   Only the (harmless) theme + chat display prefs are stored locally.
+   ========================================================================== */
 
+const USERS = ["aayush", "hari", "aditya"];
+
+const el = {
+  login: document.getElementById("login"),
+  loginForm: document.getElementById("loginForm"),
+  loginError: document.getElementById("loginError"),
+  password: document.getElementById("passwordInput"),
+  chat: document.getElementById("chat"),
+  messages: document.getElementById("messages"),
+  composer: document.getElementById("composer"),
+  input: document.getElementById("messageInput"),
+  status: document.getElementById("status"),
+  statusText: document.getElementById("statusText"),
+  members: document.getElementById("members"),
+  settings: document.getElementById("settings"),
+  settingsBtn: document.getElementById("settingsBtn"),
+  settingsClose: document.getElementById("settingsClose"),
+  settingsOverlay: document.getElementById("settingsOverlay"),
+  logoutBtn: document.getElementById("logoutBtn")
+};
+
+/* ---------------- session state (memory only) ---------------- */
 let socket = null;
-let username = null;
 let reconnectTimer = null;
 let intentionallyClosed = false;
+let selectedUser = null;
+let session = null;          // { username, password } — in memory for this tab only
+let authenticated = false;
+let onlineSet = new Set();
+let lastRendered = null;     // { username, time } for grouping
 
-// grouping state — tracks the last rendered message so consecutive
-// messages from the same sender collapse into one visual group
-let lastGroup = { el: null, username: null, time: 0 };
+const prefs = {
+  theme: "pop",
+  grouping: true,
+  timestamps: true
+};
 
-const GROUP_WINDOW_MS = 3 * 60 * 1000; // 3 minutes
-const KNOWN_USERS = ["aayush", "hari", "aditya"];
-
-/* ============================================================
-   DOM REFS
-   ============================================================ */
-
-const body = document.body;
-const login = document.getElementById("login");
-const chat = document.getElementById("chat");
-const messagesEl = document.getElementById("messages");
-const input = document.getElementById("messageInput");
-const composer = document.getElementById("composer");
-const statusEl = document.getElementById("status");
-const statusText = document.getElementById("statusText");
-const currentUserLabel = document.getElementById("currentUserLabel");
-const toast = document.getElementById("toast");
-const themeSwitcher = document.getElementById("themeSwitcher");
-const themeGlide = themeSwitcher.querySelector(".theme-pill-glide");
-
-/* ============================================================
-   THEME SWITCHING
-   ============================================================ */
-
-const THEMES = ["pop", "glass", "matrix"];
-
-function applyTheme(theme, { persist = true } = {}) {
-  if (!THEMES.includes(theme)) theme = "pop";
-
-  body.setAttribute("data-theme", theme);
-
-  themeSwitcher.querySelectorAll("[data-theme-btn]").forEach(btn => {
-    const active = btn.dataset.themeBtn === theme;
-    btn.setAttribute("aria-selected", String(active));
-  });
-
-  const index = THEMES.indexOf(theme);
-  themeGlide.style.transform = `translateX(${index * 100}%)`;
-
-  if (persist) {
-    try { localStorage.setItem("chatTheme", theme); } catch (_) {}
-  }
-}
-
-themeSwitcher.querySelectorAll("[data-theme-btn]").forEach(btn => {
-  btn.addEventListener("click", () => applyTheme(btn.dataset.themeBtn));
-});
-
-// size the glide pill to match a tab's width, then restore saved theme
-function initThemeSwitcher() {
-  const firstPill = themeSwitcher.querySelector(".theme-pill");
-  if (firstPill) {
-    themeGlide.style.width = `${firstPill.offsetWidth}px`;
-  }
-
-  let savedTheme = "pop";
+/* ---------------- preferences (theme only, never auth) ---------------- */
+function loadPrefs() {
   try {
-    savedTheme = localStorage.getItem("chatTheme") || "pop";
-  } catch (_) {}
-
-  applyTheme(savedTheme, { persist: false });
+    const raw = localStorage.getItem("chatPrefs");
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (["pop", "glass", "matrix"].includes(saved.theme)) prefs.theme = saved.theme;
+    if (typeof saved.grouping === "boolean") prefs.grouping = saved.grouping;
+    if (typeof saved.timestamps === "boolean") prefs.timestamps = saved.timestamps;
+  } catch (err) {
+    /* ignore corrupt prefs */
+  }
 }
 
-/* ============================================================
-   LOGIN
-   ============================================================ */
+function savePrefs() {
+  try {
+    localStorage.setItem("chatPrefs", JSON.stringify(prefs));
+  } catch (err) {
+    /* storage unavailable — prefs stay for this session only */
+  }
+}
 
+function applyPrefs() {
+  document.documentElement.setAttribute("data-theme", prefs.theme);
+  el.messages.classList.toggle("no-timestamps", !prefs.timestamps);
+
+  document.querySelectorAll("[data-theme-value]").forEach(btn => {
+    btn.setAttribute("aria-checked", String(btn.dataset.themeValue === prefs.theme));
+  });
+  document.querySelectorAll("[data-setting]").forEach(btn => {
+    const on = prefs[btn.dataset.setting];
+    btn.setAttribute("aria-pressed", String(on));
+    btn.querySelector(".toggle-state").textContent = on ? "ON" : "OFF";
+  });
+}
+
+/* ---------------- login screen ---------------- */
 document.querySelectorAll("[data-user]").forEach(button => {
   button.addEventListener("click", () => {
-    username = button.dataset.user;
-    try { localStorage.setItem("chatUsername", username); } catch (_) {}
-
-    enterChat();
+    selectedUser = button.dataset.user;
+    document.querySelectorAll("[data-user]").forEach(b => {
+      b.setAttribute("aria-checked", String(b === button));
+    });
+    hideLoginError();
+    el.password.focus();
   });
+});
+
+function showLoginError(message) {
+  el.loginError.textContent = message;
+  el.loginError.hidden = false;
+}
+
+function hideLoginError() {
+  el.loginError.hidden = true;
+}
+
+el.loginForm.addEventListener("submit", event => {
+  event.preventDefault();
+
+  if (!selectedUser) {
+    showLoginError("Pick an account first.");
+    return;
+  }
+
+  const password = el.password.value;
+  if (!password) {
+    showLoginError("Enter your password.");
+    return;
+  }
+
+  // Held in memory only, so an automatic reconnect can re-authenticate.
+  session = { username: selectedUser, password };
+  hideLoginError();
+  connect();
 });
 
 function enterChat() {
-  login.classList.add("hidden");
-  chat.classList.remove("hidden");
-  currentUserLabel.textContent = displayName(username);
-  connect();
+  el.login.classList.add("hidden");
+  el.chat.classList.remove("hidden");
+  el.password.value = "";
+  el.input.focus();
 }
 
-/* ============================================================
-   COMPOSER — Enter to send, Shift+Enter for newline, autosize
-   ============================================================ */
+function returnToLogin(message) {
+  authenticated = false;
+  session = null;
+  onlineSet = new Set();
+  lastRendered = null;
+  el.messages.innerHTML = "";
+  el.chat.classList.add("hidden");
+  el.login.classList.remove("hidden");
+  el.password.value = "";
+  if (message) showLoginError(message); else hideLoginError();
+}
 
-composer.addEventListener("submit", event => {
-  event.preventDefault();
-  sendCurrentMessage();
+el.logoutBtn.addEventListener("click", () => {
+  intentionallyClosed = true;
+  clearTimeout(reconnectTimer);
+  if (socket) socket.close();
+  socket = null;
+  setStatus(false);
+  renderMembers();
+  returnToLogin();
 });
 
-input.addEventListener("keydown", event => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    sendCurrentMessage();
-  }
-});
-
-input.addEventListener("input", () => {
-  input.style.height = "auto";
-  input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
-});
-
-function sendCurrentMessage() {
-  const message = input.value.trim();
-  if (!message || !socket || socket.readyState !== WebSocket.OPEN) return;
-
-  socket.send(JSON.stringify({
-    type: "message",
-    message
-  }));
-
-  input.value = "";
-  input.style.height = "auto";
-  input.focus();
+/* ---------------- connection ---------------- */
+function setStatus(online) {
+  el.statusText.textContent = online ? "CONNECTED" : "OFFLINE";
+  el.status.classList.toggle("online", online);
+  el.status.classList.toggle("offline", !online);
 }
-
-/* ============================================================
-   CONNECTION STATUS
-   ============================================================ */
-
-function setStatus(state) {
-  // state: "connecting" | "online" | "offline"
-  statusEl.classList.remove("online", "offline");
-
-  if (state === "online") {
-    statusEl.classList.add("online");
-    statusText.textContent = "Connected";
-  } else if (state === "connecting") {
-    statusEl.classList.add("offline");
-    statusText.textContent = "Connecting";
-  } else {
-    statusEl.classList.add("offline");
-    statusText.textContent = "Disconnected";
-  }
-}
-
-/* ============================================================
-   TOAST (replaces browser alert() for error messages)
-   ============================================================ */
-
-let toastTimer = null;
-
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.remove("hidden");
-
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toast.classList.add("hidden");
-  }, 4000);
-}
-
-/* ============================================================
-   WEBSOCKET — protocol unchanged: identify / identified /
-   message / history / error
-   ============================================================ */
 
 function connect() {
   intentionallyClosed = false;
 
-  if (socket &&
-      (socket.readyState === WebSocket.OPEN ||
-       socket.readyState === WebSocket.CONNECTING)) {
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
   }
-
-  setStatus("connecting");
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   socket = new WebSocket(`${protocol}//${location.host}`);
 
   socket.addEventListener("open", () => {
-    setStatus("online");
-
+    if (!session) {
+      socket.close();
+      return;
+    }
     socket.send(JSON.stringify({
-      type: "identify",
-      username
+      type: "login",
+      username: session.username,
+      password: session.password
     }));
   });
 
   socket.addEventListener("message", event => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === "history") {
-      renderHistory(data.messages);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (err) {
+      return;
     }
 
-    if (data.type === "identified") {
-      // server confirmed our username; nothing else required
+    if (data.type === "login_success") {
+      authenticated = true;
+      setStatus(true);
+      enterChat();
+      return;
+    }
+
+    if (data.type === "login_error") {
+      intentionallyClosed = true;
+      clearTimeout(reconnectTimer);
+      socket.close();
+      socket = null;
+      setStatus(false);
+      const wasIn = authenticated;
+      returnToLogin(wasIn ? "Session ended. Log in again." : data.message);
+      return;
+    }
+
+    if (data.type === "history") {
+      el.messages.innerHTML = "";
+      lastRendered = null;
+      data.messages.forEach(addMessage);
+      scrollToBottom();
+      return;
     }
 
     if (data.type === "message") {
-      appendMessage(data.message);
+      const stick = isNearBottom();
+      addMessage(data.message);
+      if (stick) scrollToBottom();
+      return;
+    }
+
+    if (data.type === "presence") {
+      onlineSet = new Set(data.users);
+      renderMembers();
+      return;
     }
 
     if (data.type === "error") {
-      showToast(data.message || "Something went wrong.");
+      console.warn(data.message);
     }
   });
 
   socket.addEventListener("close", () => {
-    setStatus("offline");
+    setStatus(false);
+    onlineSet = new Set();
+    renderMembers();
 
-    if (!intentionallyClosed) {
+    if (!intentionallyClosed && session) {
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(connect, 2000);
     }
   });
 
-  socket.addEventListener("error", () => {
-    setStatus("offline");
-  });
+  socket.addEventListener("error", () => setStatus(false));
 }
 
-/* ============================================================
-   MESSAGE RENDERING + GROUPING
-   ============================================================ */
+/* ---------------- composer ---------------- */
+el.composer.addEventListener("submit", event => {
+  event.preventDefault();
 
-function renderHistory(list) {
-  messagesEl.innerHTML = "";
-  lastGroup = { el: null, username: null, time: 0 };
-  list.forEach(msg => appendMessage(msg, { animate: false }));
-  scrollToBottom();
+  const message = el.input.value.trim();
+  if (!message || !authenticated || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+  socket.send(JSON.stringify({ type: "message", message }));
+  el.input.value = "";
+  el.input.focus();
+});
+
+/* ---------------- rendering ---------------- */
+function displayName(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function appendMessage(message, { animate = true } = {}) {
-  const time = new Date(message.created_at).getTime();
-  const mine = message.username === username;
-
-  const sameGroup =
-    lastGroup.username === message.username &&
-    (time - lastGroup.time) < GROUP_WINDOW_MS &&
-    lastGroup.el;
-
-  if (sameGroup) {
-    addBubbleTo(lastGroup.el, message, time);
-  } else {
-    const groupEl = createGroup(message, time, mine);
-    if (!animate) groupEl.style.animation = "none";
-    messagesEl.appendChild(groupEl);
-    lastGroup = { el: groupEl, username: message.username, time };
-  }
-
-  lastGroup.time = time;
-  scrollToBottom();
+function formatTime(value) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function createGroup(message, time, mine) {
-  const group = document.createElement("div");
-  group.className = "msg-group" + (mine ? " mine" : "");
+function addMessage(message) {
+  const mine = session && message.username === session.username;
+  const stamp = new Date(message.created_at).getTime();
 
-  if (!mine) {
-    const avatar = document.createElement("span");
-    avatar.className = `avatar ${avatarClass(message.username)}`;
-    avatar.textContent = initial(message.username);
-    group.appendChild(avatar);
-  }
+  const grouped =
+    prefs.grouping &&
+    lastRendered &&
+    lastRendered.username === message.username &&
+    stamp - lastRendered.time < 5 * 60 * 1000;
+
+  const row = document.createElement("div");
+  row.className = "msg" + (mine ? " mine" : "") + (grouped ? " grouped" : "");
+
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  avatar.style.background = `var(--user-${message.username})`;
+  avatar.style.color = `var(--user-${message.username}-fg)`;
+  avatar.textContent = displayName(message.username).charAt(0);
+  avatar.setAttribute("aria-hidden", "true");
 
   const body = document.createElement("div");
   body.className = "msg-body";
 
-  if (!mine) {
-    const sender = document.createElement("div");
-    sender.className = "msg-sender";
-    sender.textContent = displayName(message.username);
-    body.appendChild(sender);
+  if (!grouped) {
+    const meta = document.createElement("div");
+    meta.className = "msg-meta";
+
+    const name = document.createElement("span");
+    name.className = "msg-name";
+    name.style.color = `var(--user-${message.username})`;
+    name.textContent = mine ? "You" : displayName(message.username);
+
+    const time = document.createElement("span");
+    time.className = "msg-time";
+    time.textContent = formatTime(message.created_at);
+
+    meta.append(name, time);
+    body.appendChild(meta);
   }
 
-  group.appendChild(body);
-  addBubbleTo(group, message, time);
-
-  return group;
-}
-
-function addBubbleTo(group, message, time) {
-  const body = group.querySelector(".msg-body");
-
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-
-  const text = document.createElement("span");
-  text.className = "bubble-text";
+  const text = document.createElement("div");
+  text.className = "msg-text";
   text.textContent = message.message;
+  body.appendChild(text);
 
-  const stamp = document.createElement("span");
-  stamp.className = "bubble-time";
-  stamp.textContent = formatTime(time);
+  row.append(avatar, body);
+  el.messages.appendChild(row);
 
-  bubble.append(text, stamp);
-  body.appendChild(bubble);
+  lastRendered = { username: message.username, time: stamp };
 }
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+function renderMembers() {
+  el.members.innerHTML = "";
 
-const COLOR_SLOT = { aayush: "a", hari: "b", aditya: "c" };
+  USERS.forEach(user => {
+    const online = onlineSet.has(user);
 
-function avatarClass(user) {
-  return `avatar-${COLOR_SLOT[user] || "a"}`;
-}
+    const item = document.createElement("li");
+    item.className = "member" + (online ? " is-online" : "");
 
-function initial(user) {
-  return user.charAt(0).toUpperCase();
-}
+    const avatar = document.createElement("span");
+    avatar.className = "member-avatar";
+    avatar.style.background = `var(--user-${user})`;
+    avatar.style.color = `var(--user-${user}-fg)`;
+    avatar.textContent = displayName(user).charAt(0);
 
-function displayName(user) {
-  return user.charAt(0).toUpperCase() + user.slice(1);
-}
+    const dot = document.createElement("span");
+    dot.className = "member-dot";
+    dot.textContent = online ? "●" : "○";
 
-function formatTime(value) {
-  return new Date(value).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit"
+    const name = document.createElement("span");
+    name.className = "member-name";
+    name.textContent = displayName(user);
+
+    item.append(avatar, dot, name);
+    item.title = `${displayName(user)} — ${online ? "online" : "offline"}`;
+    el.members.appendChild(item);
   });
 }
 
+function isNearBottom() {
+  const gap = el.messages.scrollHeight - el.messages.scrollTop - el.messages.clientHeight;
+  return gap < 140;
+}
+
 function scrollToBottom() {
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  el.messages.scrollTop = el.messages.scrollHeight;
 }
 
-/* ============================================================
-   INIT
-   ============================================================ */
-
-initThemeSwitcher();
-
-// Automatically reuse the last selected account.
-let savedUser = null;
-try { savedUser = localStorage.getItem("chatUsername"); } catch (_) {}
-
-if (KNOWN_USERS.includes(savedUser)) {
-  username = savedUser;
-  enterChat();
+/* ---------------- settings ---------------- */
+function openSettings(open) {
+  el.settings.classList.toggle("hidden", !open);
+  el.settingsOverlay.classList.toggle("hidden", !open);
+  el.settingsBtn.setAttribute("aria-expanded", String(open));
 }
+
+el.settingsBtn.addEventListener("click", () => openSettings(el.settings.classList.contains("hidden")));
+el.settingsClose.addEventListener("click", () => openSettings(false));
+el.settingsOverlay.addEventListener("click", () => openSettings(false));
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") openSettings(false);
+});
+
+document.querySelectorAll("[data-theme-value]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    prefs.theme = btn.dataset.themeValue;
+    applyPrefs();
+    savePrefs();
+  });
+});
+
+document.querySelectorAll("[data-setting]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.setting;
+    prefs[key] = !prefs[key];
+    applyPrefs();
+    savePrefs();
+  });
+});
+
+/* ---------------- boot ---------------- */
+loadPrefs();
+applyPrefs();
+renderMembers();
+setStatus(false);
+
+// No auto-login, ever. The login screen is always the entry point.
