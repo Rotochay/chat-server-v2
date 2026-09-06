@@ -1,1381 +1,198 @@
-/* =========================================================
-   BASE
-========================================================= */
+* {
+  box-sizing: border-box;
+}
 
 :root {
-
-    --background: #f7f7fb;
-
-    --surface: rgba(255, 255, 255, 0.88);
-
-    --solid: #ffffff;
-
-    --text: #111218;
-
-    --muted: #7b7d86;
-
-    --border: rgba(0, 0, 0, 0.08);
-
-    --accent: #ff4fa3;
-
-    --mine: #ff4fa3;
-
-    --other: #ededf2;
-
-    --other-text: #111218;
-
-    --shadow:
-        0 20px 70px rgba(20, 20, 50, 0.12);
-
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  color: #f4f4f4;
+  background: #0b0b0d;
 }
-
-
-/* =========================================================
-   RESET
-========================================================= */
-
-* {
-
-    box-sizing: border-box;
-
-}
-
-
-html,
-body {
-
-    margin: 0;
-
-    width: 100%;
-    height: 100%;
-
-}
-
 
 body {
-
-    background: var(--background);
-
-    color: var(--text);
-
-    font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "SF Pro Display",
-        "Helvetica Neue",
-        Arial,
-        sans-serif;
-
-    overflow: hidden;
-
-    transition:
-        background 0.3s ease,
-        color 0.3s ease;
-
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, #202024 0, transparent 42%),
+    #0b0b0d;
 }
-
 
 button,
 input {
-
-    font: inherit;
-
+  font: inherit;
 }
-
-
-button {
-
-    border: none;
-
-    cursor: pointer;
-
-}
-
-
-/* =========================================================
-   APP
-========================================================= */
 
 .app {
-
-    width: 100%;
-    height: 100%;
-
-    max-width: 980px;
-
-    margin: auto;
-
-    display: flex;
-
-    flex-direction: column;
-
-    background: var(--surface);
-
-    backdrop-filter: blur(30px);
-
-    box-shadow: var(--shadow);
-
+  width: min(900px, 100%);
+  min-height: 100vh;
+  margin: auto;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
 }
-
-
-/* =========================================================
-   TOP BAR
-========================================================= */
 
 .topbar {
-
-    height: 76px;
-
-    padding:
-        0 20px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    border-bottom:
-        1px solid var(--border);
-
-    flex-shrink: 0;
-
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #26262b;
+  padding-bottom: 20px;
 }
 
-
-.brand {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: #77777f;
 }
 
-
-.brand-icon {
-
-    width: 39px;
-    height: 39px;
-
-    border-radius: 13px;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ff4fa3,
-            #ffb52e,
-            #7568ff
-        );
-
-    display: grid;
-
-    place-items: center;
-
+h1 {
+  margin: 3px 0 0;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -.06em;
 }
 
-
-.brand-icon span {
-
-    width: 12px;
-    height: 12px;
-
-    border-radius: 50%;
-
-    background: white;
-
+.status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  padding: 8px 10px;
+  border: 1px solid #2d2d33;
+  border-radius: 999px;
 }
 
-
-.brand-name {
-
-    font-size: 21px;
-
-    font-weight: 750;
-
-    letter-spacing: -1px;
-
+.status.online {
+  color: #fff;
 }
 
-
-.connection {
-
-    margin-top: 2px;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 5px;
-
-    color: var(--muted);
-
-    font-size: 11px;
-
+.status.offline {
+  color: #77777f;
 }
 
-
-.connection-dot {
-
-    width: 7px;
-    height: 7px;
-
-    border-radius: 50%;
-
-    background: #ffad00;
-
+.login {
+  margin: auto 0;
+  padding: 40px 0;
 }
 
-
-.connection-dot.online {
-
-    background: #28c968;
-
+.hint {
+  color: #85858d;
+  font-size: 14px;
+  margin-bottom: 14px;
 }
 
-
-.settings-button {
-
-    width: 42px;
-    height: 42px;
-
-    border-radius: 14px;
-
-    background: var(--other);
-
-    color: var(--text);
-
-    font-size: 20px;
-
-    transition:
-        transform 0.15s ease,
-        background 0.2s ease;
-
+.users {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-
-.settings-button:hover {
-
-    transform: rotate(12deg);
-
+.users button {
+  background: #151518;
+  color: #f4f4f4;
+  border: 1px solid #29292e;
+  padding: 12px 17px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: .15s ease;
 }
 
-
-/* =========================================================
-   CHAT HEADER
-========================================================= */
-
-.chat-area {
-
-    flex: 1;
-
-    min-height: 0;
-
-    display: flex;
-
-    flex-direction: column;
-
+.users button:hover {
+  background: #202024;
+  transform: translateY(-1px);
 }
 
-
-.chat-heading {
-
-    padding:
-        15px 21px 10px;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
+.chat {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  padding-top: 20px;
 }
-
-
-.chat-avatar {
-
-    width: 35px;
-    height: 35px;
-
-    border-radius: 50%;
-
-    display: grid;
-
-    place-items: center;
-
-    color: white;
-
-    font-weight: 800;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #7568ff
-        );
-
-}
-
-
-.chat-name {
-
-    font-size: 15px;
-
-    font-weight: 700;
-
-}
-
-
-.chat-members {
-
-    margin-top: 2px;
-
-    font-size: 11px;
-
-    color: var(--muted);
-
-}
-
-
-/* =========================================================
-   MESSAGES
-========================================================= */
 
 .messages {
-
-    flex: 1;
-
-    min-height: 0;
-
-    overflow-y: auto;
-
-    padding:
-        10px 20px 25px;
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 3px;
-
-    scrollbar-width: thin;
-
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 2px 30px;
 }
 
-
-.message-row {
-
-    max-width: 78%;
-
-    margin: 4px 0;
-
-    display: flex;
-
-    flex-direction: column;
-
-    animation:
-        messageIn 0.17s ease-out;
-
+.message {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid #18181c;
 }
 
-
-.message-row.mine {
-
-    align-self: flex-end;
-
-    align-items: flex-end;
-
+.name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #aaaab2;
 }
 
-
-.message-row.theirs {
-
-    align-self: flex-start;
-
-    align-items: flex-start;
-
+.name.me {
+  color: #fff;
 }
 
-
-/* NAME ABOVE BUBBLE */
-
-.message-sender {
-
-    margin:
-        0 10px 3px;
-
-    color: var(--muted);
-
-    font-size: 11px;
-
-    font-weight: 650;
-
+.text {
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
-
-/* BUBBLE */
-
-.message-bubble {
-
-    padding:
-        9px 13px;
-
-    border-radius: 19px;
-
-    font-size: 15.5px;
-
-    line-height: 1.38;
-
-    white-space: pre-wrap;
-
-    overflow-wrap: anywhere;
-
+.time {
+  color: #55555d;
+  font-size: 10px;
+  white-space: nowrap;
 }
-
-
-.mine .message-bubble {
-
-    color: white;
-
-    background: var(--mine);
-
-    border-bottom-right-radius: 6px;
-
-}
-
-
-.theirs .message-bubble {
-
-    color: var(--other-text);
-
-    background: var(--other);
-
-    border-bottom-left-radius: 6px;
-
-}
-
-
-/* TIME */
-
-.message-time {
-
-    margin:
-        3px 10px 0;
-
-    color: var(--muted);
-
-    font-size: 10px;
-
-    opacity: 0.8;
-
-}
-
-
-@keyframes messageIn {
-
-    from {
-
-        opacity: 0;
-
-        transform:
-            translateY(5px)
-            scale(0.98);
-
-    }
-
-    to {
-
-        opacity: 1;
-
-        transform: none;
-
-    }
-
-}
-
-
-/* =========================================================
-   MESSAGE COMPOSER
-========================================================= */
 
 .composer {
-
-    padding:
-        12px 16px 18px;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 9px;
-
-    border-top:
-        1px solid var(--border);
-
-    background: var(--surface);
-
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #26262b;
+  padding-top: 14px;
 }
 
-
-.plus-button {
-
-    width: 42px;
-    height: 42px;
-
-    flex: 0 0 42px;
-
-    border-radius: 50%;
-
-    background: var(--other);
-
-    color: var(--text);
-
-    font-size: 27px;
-
-    line-height: 1;
-
+.composer input {
+  min-width: 0;
+  flex: 1;
+  background: #141417;
+  color: #fff;
+  border: 1px solid #29292e;
+  outline: none;
+  padding: 13px 14px;
+  border-radius: 12px;
 }
 
-
-.message-input-wrapper {
-
-    height: 46px;
-
-    flex: 1;
-
-    display: flex;
-
-    align-items: center;
-
-    padding-left: 16px;
-
-    border:
-        1px solid var(--border);
-
-    border-radius: 24px;
-
-    background: var(--solid);
-
-    box-shadow:
-        0 4px 16px rgba(0, 0, 0, 0.05);
-
+.composer input:focus {
+  border-color: #55555d;
 }
 
-
-.message-input-wrapper input {
-
-    min-width: 0;
-
-    flex: 1;
-
-    border: none;
-
-    outline: none;
-
-    background: transparent;
-
-    color: var(--text);
-
-    font-size: 16px;
-
+.composer button {
+  border: 0;
+  background: #f1f1f1;
+  color: #0b0b0d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  padding: 0 17px;
+  border-radius: 12px;
+  cursor: pointer;
 }
 
-
-.message-input-wrapper input::placeholder {
-
-    color: var(--muted);
-
+.hidden {
+  display: none;
 }
-
-
-.send-button {
-
-    width: 36px;
-    height: 36px;
-
-    margin-right: 5px;
-
-    border-radius: 50%;
-
-    background: var(--accent);
-
-    color: white;
-
-    font-size: 18px;
-
-    font-weight: 800;
-
-    display: grid;
-
-    place-items: center;
-
-    transition:
-        transform 0.12s ease;
-
-}
-
-
-.send-button:hover {
-
-    transform:
-        scale(1.06);
-
-}
-
-
-/* =========================================================
-   SETTINGS BACKDROP
-========================================================= */
-
-.settings-backdrop {
-
-    position: fixed;
-
-    inset: 0;
-
-    z-index: 20;
-
-    display: flex;
-
-    justify-content: flex-end;
-
-    background:
-        rgba(0, 0, 0, 0.30);
-
-    backdrop-filter:
-        blur(8px);
-
-}
-
-
-.settings-backdrop[hidden] {
-
-    display: none;
-
-}
-
-
-/* =========================================================
-   SETTINGS PANEL
-========================================================= */
-
-.settings-panel {
-
-    width:
-        min(390px, 100%);
-
-    height: 100%;
-
-    padding:
-        25px 21px;
-
-    overflow-y: auto;
-
-    background: var(--solid);
-
-    box-shadow:
-        -20px 0 70px rgba(0, 0, 0, 0.2);
-
-}
-
-
-.settings-header {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: flex-start;
-
-}
-
-
-.settings-kicker {
-
-    color: var(--accent);
-
-    font-size: 10px;
-
-    font-weight: 800;
-
-    letter-spacing: 1.6px;
-
-}
-
-
-.settings-header h1 {
-
-    margin:
-        4px 0 0;
-
-    font-size: 31px;
-
-    letter-spacing: -1.5px;
-
-}
-
-
-.close-settings {
-
-    width: 36px;
-    height: 36px;
-
-    border-radius: 50%;
-
-    background: var(--other);
-
-    color: var(--text);
-
-    font-size: 25px;
-
-}
-
-
-/* =========================================================
-   SETTINGS SECTIONS
-========================================================= */
-
-.settings-section {
-
-    margin-top: 30px;
-
-}
-
-
-.section-title {
-
-    margin-bottom: 9px;
-
-    color: var(--muted);
-
-    font-size: 11px;
-
-    font-weight: 800;
-
-    letter-spacing: 0.4px;
-
-}
-
-
-/* =========================================================
-   NAME SELECTOR
-========================================================= */
-
-.name-selector {
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(3, 1fr);
-
-    gap: 8px;
-
-}
-
-
-.name-selector button {
-
-    padding:
-        11px 8px;
-
-    border-radius: 13px;
-
-    background: var(--other);
-
-    color: var(--text);
-
-}
-
-
-.name-selector button.selected {
-
-    color: white;
-
-    background: var(--accent);
-
-}
-
-
-/* =========================================================
-   THEME OPTIONS
-========================================================= */
-
-.theme-list {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 9px;
-
-}
-
-
-.theme-option {
-
-    width: 100%;
-
-    padding: 10px;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 13px;
-
-    text-align: left;
-
-    border:
-        2px solid transparent;
-
-    border-radius: 17px;
-
-    background: var(--other);
-
-    color: var(--text);
-
-}
-
-
-.theme-option.selected {
-
-    border-color:
-        var(--accent);
-
-}
-
-
-.theme-info strong {
-
-    display: block;
-
-    font-size: 15px;
-
-}
-
-
-.theme-info small {
-
-    display: block;
-
-    margin-top: 2px;
-
-    color: var(--muted);
-
-    font-size: 12px;
-
-}
-
-
-/* =========================================================
-   THEME PREVIEWS
-========================================================= */
-
-.theme-preview {
-
-    width: 70px;
-    height: 52px;
-
-    flex-shrink: 0;
-
-    position: relative;
-
-    overflow: hidden;
-
-    border-radius: 12px;
-
-}
-
-
-.theme-preview span {
-
-    position: absolute;
-
-    height: 7px;
-
-    border-radius: 10px;
-
-}
-
-
-.theme-preview span:nth-child(1) {
-
-    width: 43px;
-
-    top: 12px;
-
-    right: 9px;
-
-}
-
-
-.theme-preview span:nth-child(2) {
-
-    width: 34px;
-
-    top: 24px;
-
-    left: 9px;
-
-}
-
-
-.theme-preview span:nth-child(3) {
-
-    width: 29px;
-
-    top: 36px;
-
-    right: 9px;
-
-}
-
-
-/* POP */
-
-.preview-pop {
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffcf4a,
-            #ff74b8,
-            #7568ff
-        );
-
-}
-
-
-.preview-pop span {
-
-    background:
-        rgba(255,255,255,0.88);
-
-}
-
-
-/* GLASS */
-
-.preview-glass {
-
-    background:
-        linear-gradient(
-            135deg,
-            #0a0f18,
-            #2c3b55
-        );
-
-}
-
-
-.preview-glass span {
-
-    background:
-        rgba(255,255,255,0.25);
-
-}
-
-
-/* MATRIX */
-
-.preview-matrix {
-
-    background: #010704;
-
-}
-
-
-.preview-matrix span {
-
-    background: #39ff75;
-
-}
-
-
-.preview-matrix span:nth-child(2) {
-
-    background: #188b3b;
-
-}
-
-
-.preview-matrix span:nth-child(3) {
-
-    background: #0d5726;
-
-}
-
-
-/* =========================================================
-   NOTE
-========================================================= */
-
-.settings-note {
-
-    margin-top: 25px;
-
-    padding: 13px;
-
-    border-radius: 14px;
-
-    background: var(--other);
-
-    color: var(--muted);
-
-    font-size: 12px;
-
-    line-height: 1.45;
-
-}
-
-
-/* =========================================================
-   POP THEME
-========================================================= */
-
-body[data-theme="pop"] {
-
-    --background: #fff7fb;
-
-    --surface:
-        rgba(255,255,255,0.84);
-
-    --solid: #ffffff;
-
-    --text: #15131a;
-
-    --muted: #7d7882;
-
-    --border:
-        rgba(0,0,0,0.07);
-
-    --accent: #ff4fa3;
-
-    --mine: #ff4fa3;
-
-    --other: #fff0f7;
-
-    --other-text: #351527;
-
-}
-
-
-body[data-theme="pop"] .chat-avatar {
-
-    background:
-        linear-gradient(
-            135deg,
-            #ff4fa3,
-            #7568ff
-        );
-
-}
-
-
-body[data-theme="pop"] .send-button {
-
-    background:
-        linear-gradient(
-            135deg,
-            #ff4fa3,
-            #7568ff
-        );
-
-}
-
-
-/* =========================================================
-   GLASS THEME
-========================================================= */
-
-body[data-theme="glass"] {
-
-    --background: #07090e;
-
-    --surface:
-        rgba(16, 20, 29, 0.78);
-
-    --solid: #111620;
-
-    --text: #f4f6fb;
-
-    --muted: #8992a4;
-
-    --border:
-        rgba(255,255,255,0.09);
-
-    --accent: #8ab4ff;
-
-    --mine: #356fbe;
-
-    --other:
-        rgba(255,255,255,0.10);
-
-    --other-text: #f3f5f8;
-
-}
-
-
-body[data-theme="glass"] .brand-icon {
-
-    background:
-        linear-gradient(
-            135deg,
-            #8ab4ff,
-            #7568ff
-        );
-
-}
-
-
-body[data-theme="glass"] .message-bubble {
-
-    box-shadow:
-        inset 0 1px rgba(255,255,255,0.08),
-        0 5px 20px rgba(0,0,0,0.18);
-
-}
-
-
-body[data-theme="glass"] .theirs .message-bubble {
-
-    background:
-        rgba(255,255,255,0.10);
-
-    backdrop-filter:
-        blur(16px);
-
-}
-
-
-body[data-theme="glass"] .message-input-wrapper {
-
-    background:
-        rgba(255,255,255,0.05);
-
-    backdrop-filter:
-        blur(20px);
-
-}
-
-
-/* =========================================================
-   MATRIX THEME
-========================================================= */
-
-body[data-theme="matrix"] {
-
-    --background: #000a04;
-
-    --surface:
-        rgba(0,12,7,0.96);
-
-    --solid: #020d07;
-
-    --text: #43ff78;
-
-    --muted: #299b4d;
-
-    --border:
-        rgba(50,255,105,0.16);
-
-    --accent: #32ff68;
-
-    --mine: #0b6e2c;
-
-    --other: #031b0b;
-
-    --other-text: #43ff78;
-
-    font-family:
-        "SFMono-Regular",
-        Menlo,
-        Monaco,
-        Consolas,
-        monospace;
-
-}
-
-
-body[data-theme="matrix"] .brand-icon {
-
-    background: #0bff55;
-
-    border-radius: 5px;
-
-    box-shadow:
-        0 0 20px rgba(30,255,80,0.30);
-
-}
-
-
-body[data-theme="matrix"] .brand-icon span {
-
-    background: #001b08;
-
-}
-
-
-body[data-theme="matrix"] .chat-avatar {
-
-    background: #0b6e2c;
-
-    border:
-        1px solid #36ff6e;
-
-    border-radius: 5px;
-
-}
-
-
-body[data-theme="matrix"] .message-bubble {
-
-    border:
-        1px solid rgba(50,255,105,0.15);
-
-    border-radius: 5px;
-
-    box-shadow: none;
-
-}
-
-
-body[data-theme="matrix"] .mine .message-bubble {
-
-    background: #0b6e2c;
-
-    color: #d7ffe3;
-
-    border-bottom-right-radius: 2px;
-
-}
-
-
-body[data-theme="matrix"] .theirs .message-bubble {
-
-    background: #031b0b;
-
-    border-bottom-left-radius: 2px;
-
-}
-
-
-body[data-theme="matrix"] .message-input-wrapper {
-
-    background: #010904;
-
-    border-color:
-        rgba(50,255,105,0.20);
-
-    border-radius: 5px;
-
-    box-shadow: none;
-
-}
-
-
-body[data-theme="matrix"] .send-button {
-
-    background: #0b6e2c;
-
-    color: #43ff78;
-
-    border-radius: 5px;
-
-}
-
-
-body[data-theme="matrix"] .plus-button,
-body[data-theme="matrix"] .settings-button {
-
-    background: #031b0b;
-
-    color: #43ff78;
-
-    border-radius: 5px;
-
-}
-
-
-body[data-theme="matrix"] .settings-panel {
-
-    background: #020d07;
-
-}
-
-
-body[data-theme="matrix"] .theme-option,
-body[data-theme="matrix"] .name-selector button {
-
-    background: #031b0b;
-
-    color: #43ff78;
-
-}
-
-
-body[data-theme="matrix"] .name-selector button.selected {
-
-    background: #0b6e2c;
-
-}
-
-
-body[data-theme="matrix"] .settings-header h1 {
-
-    letter-spacing: 0;
-
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
 
 @media (max-width: 600px) {
+  .app {
+    padding: 20px 15px;
+  }
 
-    .topbar {
+  .message {
+    grid-template-columns: 60px 1fr;
+  }
 
-        height: 68px;
-
-    }
-
-
-    .messages {
-
-        padding:
-            8px 12px 20px;
-
-    }
-
-
-    .message-row {
-
-        max-width: 85%;
-
-    }
-
-
-    .chat-heading {
-
-        padding-left: 14px;
-
-    }
-
-
-    .composer {
-
-        padding:
-            10px 10px 13px;
-
-    }
-
-
-    .settings-panel {
-
-        width: 100%;
-
-    }
-
+  .time {
+    grid-column: 2;
+  }
 }
