@@ -1,89 +1,130 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="pop">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Chat Server</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Chat Server</title>
+  <meta name="description" content="A private chat room for three people.">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body data-theme="pop">
+<body>
 
-  <div class="theme-switcher" id="themeSwitcher" role="tablist" aria-label="Theme">
-    <button type="button" class="theme-pill" data-theme-btn="pop" role="tab" aria-selected="true">Pop</button>
-    <button type="button" class="theme-pill" data-theme-btn="glass" role="tab" aria-selected="false">Glass</button>
-    <button type="button" class="theme-pill" data-theme-btn="matrix" role="tab" aria-selected="false">Matrix</button>
-    <span class="theme-pill-glide" aria-hidden="true"></span>
+  <!-- ============ LOGIN ============ -->
+  <main id="login" class="screen login">
+    <div class="login-shapes" aria-hidden="true">
+      <span class="shape shape-flag"></span>
+      <span class="shape shape-dot"></span>
+      <span class="shape shape-bar"></span>
+    </div>
+
+    <div class="login-inner">
+      <p class="kicker">PRIVATE // 3 PEOPLE ONLY</p>
+      <h1 class="mega">CHAT<br>SERVER</h1>
+      <p class="ask">WHO ARE YOU?</p>
+
+      <div class="cards" role="radiogroup" aria-label="Choose your account">
+        <button type="button" class="card card-aayush" data-user="aayush" role="radio" aria-checked="false">
+          <span class="card-letter">A</span>
+          <span class="card-name">Aayush</span>
+        </button>
+        <button type="button" class="card card-hari" data-user="hari" role="radio" aria-checked="false">
+          <span class="card-letter">H</span>
+          <span class="card-name">Hari</span>
+        </button>
+        <button type="button" class="card card-aditya" data-user="aditya" role="radio" aria-checked="false">
+          <span class="card-letter">A</span>
+          <span class="card-name">Aditya</span>
+        </button>
+      </div>
+
+      <form id="loginForm" class="login-form" autocomplete="off">
+        <label class="field-label" for="passwordInput">PASSWORD</label>
+        <div class="field-row">
+          <input
+            id="passwordInput"
+            name="password"
+            type="password"
+            autocomplete="off"
+            placeholder="••••••••"
+            required
+          >
+          <button type="submit" class="enter-btn">ENTER <span aria-hidden="true">→</span></button>
+        </div>
+        <p id="loginError" class="login-error" role="alert" hidden></p>
+      </form>
+    </div>
+  </main>
+
+  <!-- ============ CHAT ============ -->
+  <div id="chat" class="screen chat hidden">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">✳</span>
+        <span class="brand-name">CHAT SERVER</span>
+      </div>
+
+      <div id="status" class="status offline">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">OFFLINE</span>
+      </div>
+
+      <ul id="members" class="members" aria-label="Members"></ul>
+
+      <button id="settingsBtn" type="button" class="icon-btn" aria-label="Settings" aria-expanded="false">⚙</button>
+      <button id="logoutBtn" type="button" class="icon-btn" aria-label="Log out">⏻</button>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite"></main>
+
+    <form id="composer" class="composer" autocomplete="off">
+      <input
+        id="messageInput"
+        type="text"
+        maxlength="2000"
+        autocomplete="off"
+        aria-label="Message"
+        placeholder="Message..."
+      >
+      <button type="submit" class="send-btn">SEND <span aria-hidden="true">➤</span></button>
+    </form>
   </div>
 
-  <main class="app">
+  <!-- ============ SETTINGS ============ -->
+  <div id="settingsOverlay" class="overlay hidden"></div>
 
-    <section id="login" class="screen login-screen">
-      <div class="login-backdrop" aria-hidden="true">
-        <span class="blob blob-1"></span>
-        <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
-      </div>
+  <aside id="settings" class="settings hidden" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="settings-head">
+      <h2>SETTINGS</h2>
+      <button id="settingsClose" type="button" class="icon-btn" aria-label="Close settings">×</button>
+    </div>
 
-      <div class="login-card">
-        <p class="login-eyebrow">Chat Server</p>
-        <h1 class="login-title">Who's typing?</h1>
-        <p class="login-sub">Pick your name to enter the room.</p>
-
-        <div class="user-grid">
-          <button type="button" class="user-card" data-user="aayush" data-color="a">
-            <span class="avatar avatar-a">A</span>
-            <span class="user-name">Aayush</span>
-          </button>
-          <button type="button" class="user-card" data-user="hari" data-color="b">
-            <span class="avatar avatar-b">H</span>
-            <span class="user-name">Hari</span>
-          </button>
-          <button type="button" class="user-card" data-user="aditya" data-color="c">
-            <span class="avatar avatar-c">D</span>
-            <span class="user-name">Aditya</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section id="chat" class="screen chat-screen hidden">
-      <header class="chat-header">
-        <div class="chat-header-left">
-          <span class="chat-mark" aria-hidden="true"></span>
-          <div class="chat-header-titles">
-            <span class="chat-name">Chat Server</span>
-            <span class="chat-user" id="currentUserLabel">—</span>
-          </div>
-        </div>
-        <div class="status offline" id="status">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="status-text" id="statusText">Connecting</span>
-        </div>
-      </header>
-
-      <div class="messages" id="messages"></div>
-
-      <div class="toast hidden" id="toast" role="alert"></div>
-
-      <form class="composer" id="composer">
-        <textarea
-          id="messageInput"
-          class="composer-input"
-          rows="1"
-          maxlength="2000"
-          autocomplete="off"
-          placeholder="Message…"
-        ></textarea>
-        <button type="submit" class="send-btn" id="sendBtn" aria-label="Send message">
-          <span class="send-arrow" aria-hidden="true">&#8593;</span>
+    <section class="settings-block">
+      <h3>APPEARANCE</h3>
+      <div class="theme-list" role="radiogroup" aria-label="Theme">
+        <button type="button" class="theme-opt" data-theme-value="pop" role="radio" aria-checked="true">
+          <span class="radio" aria-hidden="true"></span> Pop
         </button>
-      </form>
+        <button type="button" class="theme-opt" data-theme-value="glass" role="radio" aria-checked="false">
+          <span class="radio" aria-hidden="true"></span> Liquid Glass
+        </button>
+        <button type="button" class="theme-opt" data-theme-value="matrix" role="radio" aria-checked="false">
+          <span class="radio" aria-hidden="true"></span> Matrix
+        </button>
+      </div>
     </section>
 
-  </main>
+    <hr class="settings-rule">
+
+    <section class="settings-block">
+      <h3>CHAT</h3>
+      <button type="button" class="toggle-row" data-setting="grouping" aria-pressed="true">
+        <span>Message grouping</span><span class="toggle-state">ON</span>
+      </button>
+      <button type="button" class="toggle-row" data-setting="timestamps" aria-pressed="true">
+        <span>Timestamps</span><span class="toggle-state">ON</span>
+      </button>
+    </section>
+  </aside>
 
   <script src="app.js"></script>
 </body>
