@@ -669,3 +669,204 @@ button { cursor: pointer; }
   .card { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 16px; }
   .settings { width: 100%; }
 }
+
+/* =========================================================
+   EMPTY CHAT
+   ========================================================= */
+
+.empty-chat {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  box-sizing: border-box;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.empty-chat-mark {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+  border: 2px solid currentColor;
+  border-radius: 16px;
+  font-size: 24px;
+}
+
+.empty-chat h2 {
+  margin: 0;
+  font-size: clamp(18px, 3vw, 26px);
+  letter-spacing: 0.08em;
+}
+
+.empty-chat p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  opacity: 0.65;
+}
+
+
+/* =========================================================
+   WIPE CHAT
+   ========================================================= */
+
+.wipe-section {
+  margin-top: 8px;
+}
+
+.wipe-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 13px 14px;
+
+  border: 2px solid currentColor;
+  background: transparent;
+  color: inherit;
+
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+
+  cursor: pointer;
+
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
+}
+
+.wipe-btn:hover {
+  transform: translate(-2px, -2px);
+}
+
+.wipe-btn:active {
+  transform: translate(0, 0);
+}
+
+.wipe-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+
+/* =========================================================
+   WIPE MODAL
+   ========================================================= */
+
+.modal {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: grid;
+  place-items: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: min(440px, 100%);
+
+  padding: 28px;
+
+  box-sizing: border-box;
+
+  background: var(--bg, #fff);
+  color: var(--text, #111);
+
+  border: 2px solid currentColor;
+
+  box-shadow:
+    10px 10px 0 currentColor;
+}
+
+.modal-mark {
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  margin-bottom: 18px;
+
+  border: 2px solid currentColor;
+
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.modal-card h2 {
+  margin: 0;
+
+  font-size: 24px;
+
+  letter-spacing: 0.04em;
+}
+
+.modal-card > p {
+  margin: 10px 0 20px;
+
+  line-height: 1.5;
+
+  opacity: 0.72;
+}
+
+.modal-card input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin-top: 7px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+
+  margin-top: 18px;
+}
+
+.modal-actions button {
+  flex: 1;
+
+  min-height: 44px;
+
+  border: 2px solid currentColor;
+
+  font: inherit;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.modal-cancel {
+  background: transparent;
+  color: inherit;
+}
+
+.modal-danger {
+  background: currentColor;
+  color: var(--bg, #fff);
+}
+
+.modal-danger:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
