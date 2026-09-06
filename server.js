@@ -11,7 +11,9 @@ const server = http.createServer(app);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: process.env.DATABASE_URL
+    ? { rejectUnauthorized: false }
+    : false
 });
 
 const MAX_HISTORY = 200;
@@ -19,32 +21,56 @@ const MAX_MESSAGE_LENGTH = 2000;
 const HEARTBEAT_INTERVAL = 30000;
 
 /*
- * Credential configuration.
+ * Passwords are server-side only.
  *
- * Passwords live ONLY on the server. Each account reads an environment
- * variable first (so passwords can be changed on Render without a code
- * change) and falls back to the prototype default.
- *
- * Upgrading to hashed passwords later: replace `verifyPassword` with a
- * bcrypt/argon2 compare and store hashes in these same slots.
+ * Render environment variables override these defaults.
  */
 const USER_PASSWORDS = {
-  aayush: process.env.PASSWORD_AAYUSH || "password",
-  hari: process.env.PASSWORD_HARI || "password",
-  aditya: process.env.PASSWORD_ADITYA || "password"
+  aayush: process.env.PASSWORD_AAYUSH || "chat-server-ADMIN",
+  hari: process.env.PASSWORD_HARI || "chat-server-1",
+  aditya: process.env.PASSWORD_ADITYA || "chat-server-2"
 };
+
+const WIPE_CHAT_PASSWORD =
+  process.env.WIPE_CHAT_PASSWORD || "chat-server-ADMIN";
 
 const ALLOWED_USERS = new Set(Object.keys(USER_PASSWORDS));
 
-function verifyPassword(username, candidate) {
-  const expected = USER_PASSWORDS[username];
-  if (typeof expected !== "string") return false;
+function verifySecret(expected, candidate) {
+  if (
+    typeof expected !== "string" ||
+    typeof candidate !== "string"
+  ) {
+    return false;
+  }
 
-  // Hash both sides so timingSafeEqual always gets equal-length buffers
-  // and the password length itself is not leaked through timing.
-  const a = crypto.createHash("sha256").update(String(candidate), "utf8").digest();
-  const b = crypto.createHash("sha256").update(expected, "utf8").digest();
+  const a = crypto
+    .createHash("sha256")
+    .update(candidate, "utf8")
+    .digest();
+
+  const b = crypto
+    .createHash("sha256")
+    .update(expected, "utf8")
+    .digest();
+
   return crypto.timingSafeEqual(a, b);
+}
+
+function verifyPassword(username, candidate) {
+  if (!ALLOWED_USERS.has(username)) return false;
+
+  return verifySecret(
+    USER_PASSWORDS[username],
+    String(candidate ?? "")
+  );
+}
+
+/*
+ * Only Aayush's account can use the wipe function.
+ */
+function isAdmin(username) {
+  return username === "aayush";
 }
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -52,16 +78,26 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.json({ ok: true, database: "connected" });
+
+    res.json({
+      ok: true,
+      database: "connected"
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, database: "error" });
+
+    res.status(500).json({
+      ok: false,
+      database: "error"
+    });
   }
 });
 
 async function initDatabase() {
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is missing. Add a PostgreSQL database and set DATABASE_URL.");
+    throw new Error(
+      "DATABASE_URL is missing. Add a PostgreSQL database and set DATABASE_URL."
+    );
   }
 
   await pool.query(`
@@ -82,7 +118,8 @@ async function initDatabase() {
 }
 
 async function getHistory() {
-  const result = await pool.query(`
+  const result = await pool.query(
+    `
     SELECT id, username, message, created_at
     FROM (
       SELECT id, username, message, created_at
@@ -91,19 +128,30 @@ async function getHistory() {
       LIMIT $1
     ) recent
     ORDER BY created_at ASC
-  `, [MAX_HISTORY]);
+    `,
+    [MAX_HISTORY]
+  );
 
   return result.rows;
 }
 
 async function saveMessage(username, message) {
-  const result = await pool.query(`
+  const result = await pool.query(
+    `
     INSERT INTO messages (username, message)
     VALUES ($1, $2)
     RETURNING id, username, message, created_at
-  `, [username, message]);
+    `,
+    [username, message]
+  );
 
   return result.rows[0];
+}
+
+async function wipeMessages() {
+  await pool.query(
+    "TRUNCATE TABLE messages RESTART IDENTITY"
+  );
 }
 
 const wss = new WebSocketServer({ server });
@@ -114,11 +162,14 @@ function send(ws, payload) {
   }
 }
 
-// Only authenticated sockets receive chat traffic.
 function broadcast(payload) {
   const data = JSON.stringify(payload);
+
   for (const client of wss.clients) {
-    if (client.readyState === client.OPEN && client.username) {
+    if (
+      client.readyState === client.OPEN &&
+      client.username
+    ) {
       client.send(data);
     }
   }
@@ -126,16 +177,24 @@ function broadcast(payload) {
 
 function onlineUsers() {
   const users = new Set();
+
   for (const client of wss.clients) {
-    if (client.readyState === client.OPEN && client.username) {
+    if (
+      client.readyState === client.OPEN &&
+      client.username
+    ) {
       users.add(client.username);
     }
   }
+
   return [...users];
 }
 
 function broadcastPresence() {
-  broadcast({ type: "presence", users: onlineUsers() });
+  broadcast({
+    type: "presence",
+    users: onlineUsers()
+  });
 }
 
 wss.on("connection", (ws) => {
@@ -150,55 +209,172 @@ wss.on("connection", (ws) => {
     try {
       const data = JSON.parse(raw.toString());
 
+      /*
+       * LOGIN
+       */
       if (data.type === "login") {
-        const username = String(data.username || "").trim().toLowerCase();
+        const username = String(
+          data.username || ""
+        )
+          .trim()
+          .toLowerCase();
 
-        if (!ALLOWED_USERS.has(username) || !verifyPassword(username, data.password)) {
-          // Deliberately generic: never reveal which half was wrong.
+        if (
+          !ALLOWED_USERS.has(username) ||
+          !verifyPassword(username, data.password)
+        ) {
           send(ws, {
             type: "login_error",
             message: "Incorrect username or password."
           });
+
           return;
         }
 
         ws.username = username;
-        send(ws, { type: "login_success", username });
+
+        send(ws, {
+          type: "login_success",
+          username,
+          canWipeChat: isAdmin(username)
+        });
 
         try {
-          send(ws, { type: "history", messages: await getHistory() });
+          send(ws, {
+            type: "history",
+            messages: await getHistory()
+          });
         } catch (err) {
           console.error("History error:", err);
-          send(ws, { type: "error", message: "Could not load chat history." });
+
+          send(ws, {
+            type: "error",
+            message: "Could not load chat history."
+          });
         }
 
         broadcastPresence();
+
         return;
       }
 
+      /*
+       * NORMAL MESSAGE
+       */
       if (data.type === "message") {
         if (!ws.username) {
-          send(ws, { type: "error", message: "Log in first." });
+          send(ws, {
+            type: "error",
+            message: "Log in first."
+          });
+
           return;
         }
 
-        const message = String(data.message || "").trim();
+        const message = String(
+          data.message || ""
+        ).trim();
+
         if (!message) return;
 
         if (message.length > MAX_MESSAGE_LENGTH) {
           send(ws, {
             type: "error",
-            message: `Message is too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`
+            message:
+              `Message is too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`
           });
+
           return;
         }
 
-        const saved = await saveMessage(ws.username, message);
-        broadcast({ type: "message", message: saved });
+        const saved = await saveMessage(
+          ws.username,
+          message
+        );
+
+        broadcast({
+          type: "message",
+          message: saved
+        });
+
+        return;
+      }
+
+      /*
+       * WIPE CHAT
+       */
+      if (data.type === "wipe_chat") {
+        if (!ws.username) {
+          send(ws, {
+            type: "wipe_error",
+            message: "Log in first."
+          });
+
+          return;
+        }
+
+        /*
+         * Server-side admin check.
+         * Changing the frontend cannot bypass this.
+         */
+        if (!isAdmin(ws.username)) {
+          send(ws, {
+            type: "wipe_error",
+            message:
+              "You do not have permission to wipe the chat."
+          });
+
+          return;
+        }
+
+        /*
+         * Verify the separate wipe password.
+         */
+        if (
+          !verifySecret(
+            WIPE_CHAT_PASSWORD,
+            String(data.password ?? "")
+          )
+        ) {
+          send(ws, {
+            type: "wipe_error",
+            message: "Incorrect admin password."
+          });
+
+          return;
+        }
+
+        try {
+          await wipeMessages();
+
+          /*
+           * Tell every connected user immediately.
+           */
+          broadcast({
+            type: "chat_wiped",
+            by: ws.username
+          });
+        } catch (err) {
+          console.error("Wipe error:", err);
+
+          send(ws, {
+            type: "wipe_error",
+            message: "Could not wipe the chat."
+          });
+        }
+
+        return;
       }
     } catch (err) {
-      console.error("WebSocket message error:", err);
-      send(ws, { type: "error", message: "Something went wrong." });
+      console.error(
+        "WebSocket message error:",
+        err
+      );
+
+      send(ws, {
+        type: "error",
+        message: "Something went wrong."
+      });
     }
   });
 
@@ -210,31 +386,52 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("error", (err) => {
-    console.error("WebSocket error:", err.message);
+    console.error(
+      "WebSocket error:",
+      err.message
+    );
   });
 });
 
-// Drop dead connections so the presence list stays honest behind Render's proxy.
+/*
+ * Keep WebSocket connections alive behind Render's proxy.
+ */
 const heartbeat = setInterval(() => {
   for (const ws of wss.clients) {
     if (ws.isAlive === false) {
       ws.terminate();
       continue;
     }
+
     ws.isAlive = false;
     ws.ping();
   }
 }, HEARTBEAT_INTERVAL);
 
-wss.on("close", () => clearInterval(heartbeat));
+wss.on("close", () => {
+  clearInterval(heartbeat);
+});
 
+/*
+ * START SERVER
+ */
 initDatabase()
   .then(() => {
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`Chat server listening on port ${PORT}`);
-    });
+    server.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+        console.log(
+          `Chat server listening on port ${PORT}`
+        );
+      }
+    );
   })
   .catch((err) => {
-    console.error("Startup failed:", err);
+    console.error(
+      "Startup failed:",
+      err
+    );
+
     process.exit(1);
   });
