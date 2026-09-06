@@ -1,17 +1,19 @@
 {
-  "name": "private-chat-v3",
-  "version": "3.0.0",
+  "name": "private-chat-v2",
+  "version": "2.0.0",
   "private": true,
+  "description": "Private WebSocket chat with persistent PostgreSQL history",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "pg": "^8.16.3",
-    "ws": "^8.18.3"
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "ws": "^8.18.0"
   }
 }
