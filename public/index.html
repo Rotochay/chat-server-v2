@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat V2</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PRIVATE CHAT</div>
+        <h1>chat.</h1>
+      </div>
+      <div id="status" class="status offline">OFFLINE</div>
+    </header>
+
+    <section id="login" class="login">
+      <p class="hint">Choose your account.</p>
+      <div class="users">
+        <button data-user="aayush">Aayush</button>
+        <button data-user="hari">Hari</button>
+        <button data-user="aditya">Aditya</button>
+      </div>
+    </section>
+
+    <section id="chat" class="chat hidden">
+      <div id="messages" class="messages"></div>
+
+      <form id="composer" class="composer">
+        <input
+          id="messageInput"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          placeholder="message..."
+        >
+        <button type="submit">SEND</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
