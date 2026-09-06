@@ -1,44 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat V2</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Chat Server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <main class="app">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">PRIVATE CHAT</div>
-        <h1>chat.</h1>
-      </div>
-      <div id="status" class="status offline">OFFLINE</div>
-    </header>
+<body data-theme="pop">
 
-    <section id="login" class="login">
-      <p class="hint">Choose your account.</p>
-      <div class="users">
-        <button data-user="aayush">Aayush</button>
-        <button data-user="hari">Hari</button>
-        <button data-user="aditya">Aditya</button>
+  <div class="theme-switcher" id="themeSwitcher" role="tablist" aria-label="Theme">
+    <button type="button" class="theme-pill" data-theme-btn="pop" role="tab" aria-selected="true">Pop</button>
+    <button type="button" class="theme-pill" data-theme-btn="glass" role="tab" aria-selected="false">Glass</button>
+    <button type="button" class="theme-pill" data-theme-btn="matrix" role="tab" aria-selected="false">Matrix</button>
+    <span class="theme-pill-glide" aria-hidden="true"></span>
+  </div>
+
+  <main class="app">
+
+    <section id="login" class="screen login-screen">
+      <div class="login-backdrop" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
+      </div>
+
+      <div class="login-card">
+        <p class="login-eyebrow">Chat Server</p>
+        <h1 class="login-title">Who's typing?</h1>
+        <p class="login-sub">Pick your name to enter the room.</p>
+
+        <div class="user-grid">
+          <button type="button" class="user-card" data-user="aayush" data-color="a">
+            <span class="avatar avatar-a">A</span>
+            <span class="user-name">Aayush</span>
+          </button>
+          <button type="button" class="user-card" data-user="hari" data-color="b">
+            <span class="avatar avatar-b">H</span>
+            <span class="user-name">Hari</span>
+          </button>
+          <button type="button" class="user-card" data-user="aditya" data-color="c">
+            <span class="avatar avatar-c">D</span>
+            <span class="user-name">Aditya</span>
+          </button>
+        </div>
       </div>
     </section>
 
-    <section id="chat" class="chat hidden">
-      <div id="messages" class="messages"></div>
+    <section id="chat" class="screen chat-screen hidden">
+      <header class="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-mark" aria-hidden="true"></span>
+          <div class="chat-header-titles">
+            <span class="chat-name">Chat Server</span>
+            <span class="chat-user" id="currentUserLabel">—</span>
+          </div>
+        </div>
+        <div class="status offline" id="status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-text" id="statusText">Connecting</span>
+        </div>
+      </header>
 
-      <form id="composer" class="composer">
-        <input
+      <div class="messages" id="messages"></div>
+
+      <div class="toast hidden" id="toast" role="alert"></div>
+
+      <form class="composer" id="composer">
+        <textarea
           id="messageInput"
-          type="text"
+          class="composer-input"
+          rows="1"
           maxlength="2000"
           autocomplete="off"
-          placeholder="message..."
-        >
-        <button type="submit">SEND</button>
+          placeholder="Message…"
+        ></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" aria-label="Send message">
+          <span class="send-arrow" aria-hidden="true">&#8593;</span>
+        </button>
       </form>
     </section>
+
   </main>
 
   <script src="app.js"></script>
