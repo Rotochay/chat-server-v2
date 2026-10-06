@@ -1,343 +1,213 @@
-const USERS = ["aayush", "hari", "aditya"];
+/* =========================================================
+   CHAT SERVER CLIENT
+   ========================================================= */
 
-const el = {
-  login: document.getElementById("login"),
-  loginForm: document.getElementById("loginForm"),
-  loginError: document.getElementById("loginError"),
-  password: document.getElementById("passwordInput"),
+const loginScreen =
+  document.getElementById("loginScreen");
 
-  chat: document.getElementById("chat"),
-  messages: document.getElementById("messages"),
-  composer: document.getElementById("composer"),
-  input: document.getElementById("messageInput"),
+const chatScreen =
+  document.getElementById("chatScreen");
 
-  status: document.getElementById("status"),
-  statusText: document.getElementById("statusText"),
-  members: document.getElementById("members"),
+const loginForm =
+  document.getElementById("loginForm");
 
-  settings: document.getElementById("settings"),
-  settingsBtn: document.getElementById("settingsBtn"),
-  settingsClose: document.getElementById("settingsClose"),
-  settingsOverlay: document.getElementById("settingsOverlay"),
+const usernameInput =
+  document.getElementById("usernameInput");
 
-  logoutBtn: document.getElementById("logoutBtn"),
+const passwordInput =
+  document.getElementById("passwordInput");
 
-  wipeSection: document.getElementById("wipeSection"),
-  wipeBtn: document.getElementById("wipeBtn"),
+const loginButton =
+  document.getElementById("loginButton");
 
-  wipeModal: document.getElementById("wipeModal"),
-  wipePassword: document.getElementById("wipePassword"),
-  wipeError: document.getElementById("wipeError"),
-  wipeCancel: document.getElementById("wipeCancel"),
-  wipeConfirm: document.getElementById("wipeConfirm")
-};
+const loginError =
+  document.getElementById("loginError");
 
+const chatMessages =
+  document.getElementById("chatMessages");
 
-/* ---------------- session state ---------------- */
+const messageForm =
+  document.getElementById("messageForm");
+
+const messageInput =
+  document.getElementById("messageInput");
+
+const membersList =
+  document.getElementById("membersList");
+
+const onlineCount =
+  document.getElementById("onlineCount");
+
+const currentUserLabel =
+  document.getElementById("currentUserLabel");
+
+const connectionStatus =
+  document.getElementById("connectionStatus");
+
+const logoutButton =
+  document.getElementById("logoutButton");
+
+const settingsButton =
+  document.getElementById("settingsButton");
+
+const settingsPanel =
+  document.getElementById("settingsPanel");
+
+const closeSettingsButton =
+  document.getElementById("closeSettings");
+
+const wipeSection =
+  document.getElementById("wipeSection");
+
+const wipeButton =
+  document.getElementById("wipeButton");
+
+const wipeModal =
+  document.getElementById("wipeModal");
+
+const wipeForm =
+  document.getElementById("wipeForm");
+
+const wipePassword =
+  document.getElementById("wipePassword");
+
+const wipeCancel =
+  document.getElementById("wipeCancel");
+
+const wipeError =
+  document.getElementById("wipeError");
+
+const themeButtons =
+  document.querySelectorAll(
+    "[data-theme-choice]"
+  );
+
+const groupingToggle =
+  document.getElementById("groupingToggle");
+
+const timestampsToggle =
+  document.getElementById(
+    "timestampsToggle"
+  );
+
+/* =========================================================
+   STATE
+   ========================================================= */
 
 let socket = null;
-let reconnectTimer = null;
-let intentionallyClosed = false;
 
-let selectedUser = null;
 let session = null;
 
 let authenticated = false;
+
 let onlineSet = new Set();
-let lastRendered = null;
 
 let canWipeChat = false;
 
+let userDirectory = new Map();
 
-/* ---------------- preferences ---------------- */
+let reconnectTimer = null;
 
-const prefs = {
-  theme: "pop",
-  grouping: true,
-  timestamps: true
-};
+let manuallyLoggedOut = false;
 
-function loadPrefs() {
-  try {
-    const raw = localStorage.getItem(
-      "chatPrefs"
-    );
+let messageGrouping = true;
 
-    if (!raw) return;
+let showTimestamps = true;
 
-    const saved = JSON.parse(raw);
+/* =========================================================
+   STORAGE
+   ========================================================= */
 
-    if (
-      ["pop", "glass", "matrix"]
-        .includes(saved.theme)
-    ) {
-      prefs.theme = saved.theme;
-    }
+const savedTheme =
+  localStorage.getItem("chatTheme");
 
-    if (
-      typeof saved.grouping ===
-      "boolean"
-    ) {
-      prefs.grouping = saved.grouping;
-    }
-
-    if (
-      typeof saved.timestamps ===
-      "boolean"
-    ) {
-      prefs.timestamps =
-        saved.timestamps;
-    }
-  } catch (err) {}
-}
-
-function savePrefs() {
-  try {
-    localStorage.setItem(
-      "chatPrefs",
-      JSON.stringify(prefs)
-    );
-  } catch (err) {}
-}
-
-function applyPrefs() {
-  document.documentElement
-    .setAttribute(
-      "data-theme",
-      prefs.theme
-    );
-
-  el.messages.classList.toggle(
-    "no-timestamps",
-    !prefs.timestamps
+const savedGrouping =
+  localStorage.getItem(
+    "messageGrouping"
   );
 
-  document
-    .querySelectorAll(
-      "[data-theme-value]"
-    )
-    .forEach(btn => {
-      btn.setAttribute(
-        "aria-checked",
-        String(
-          btn.dataset.themeValue ===
-          prefs.theme
-        )
-      );
-    });
-
-  document
-    .querySelectorAll(
-      "[data-setting]"
-    )
-    .forEach(btn => {
-      const on =
-        prefs[
-          btn.dataset.setting
-        ];
-
-      btn.setAttribute(
-        "aria-pressed",
-        String(on)
-      );
-
-      btn.querySelector(
-        ".toggle-state"
-      ).textContent =
-        on ? "ON" : "OFF";
-    });
-}
-
-
-/* ---------------- login ---------------- */
-
-document
-  .querySelectorAll("[data-user]")
-  .forEach(button => {
-    button.addEventListener(
-      "click",
-      () => {
-        selectedUser =
-          button.dataset.user;
-
-        document
-          .querySelectorAll(
-            "[data-user]"
-          )
-          .forEach(b => {
-            b.setAttribute(
-              "aria-checked",
-              String(b === button)
-            );
-          });
-
-        hideLoginError();
-        el.password.focus();
-      }
-    );
-  });
-
-function showLoginError(message) {
-  el.loginError.textContent =
-    message;
-
-  el.loginError.hidden = false;
-}
-
-function hideLoginError() {
-  el.loginError.hidden = true;
-}
-
-el.loginForm.addEventListener(
-  "submit",
-  event => {
-    event.preventDefault();
-
-    if (!selectedUser) {
-      showLoginError(
-        "Pick an account first."
-      );
-
-      return;
-    }
-
-    const password =
-      el.password.value;
-
-    if (!password) {
-      showLoginError(
-        "Enter your password."
-      );
-
-      return;
-    }
-
-    session = {
-      username: selectedUser,
-      password
-    };
-
-    hideLoginError();
-    connect();
-  }
-);
-
-function enterChat() {
-  el.login.classList.add("hidden");
-  el.chat.classList.remove("hidden");
-
-  el.password.value = "";
-  el.input.focus();
-}
-
-function returnToLogin(message) {
-  authenticated = false;
-  session = null;
-  canWipeChat = false;
-
-  onlineSet = new Set();
-  lastRendered = null;
-
-  el.messages.innerHTML = "";
-
-  el.chat.classList.add("hidden");
-  el.login.classList.remove("hidden");
-
-  el.password.value = "";
-
-  closeWipeModal();
-  updateWipeVisibility();
-
-  if (message) {
-    showLoginError(message);
-  } else {
-    hideLoginError();
-  }
-}
-
-
-/* ---------------- logout ---------------- */
-
-el.logoutBtn.addEventListener(
-  "click",
-  () => {
-    intentionallyClosed = true;
-
-    clearTimeout(
-      reconnectTimer
-    );
-
-    if (socket) {
-      socket.close();
-    }
-
-    socket = null;
-
-    setStatus(false);
-    renderMembers();
-    returnToLogin();
-  }
-);
-
-
-/* ---------------- connection ---------------- */
-
-function setStatus(online) {
-  el.statusText.textContent =
-    online
-      ? "CONNECTED"
-      : "OFFLINE";
-
-  el.status.classList.toggle(
-    "online",
-    online
+const savedTimestamps =
+  localStorage.getItem(
+    "showTimestamps"
   );
 
-  el.status.classList.toggle(
-    "offline",
-    !online
-  );
+if (savedTheme) {
+  document.documentElement.dataset.theme =
+    savedTheme;
+}
+
+if (savedGrouping !== null) {
+  messageGrouping =
+    savedGrouping !== "false";
+}
+
+if (savedTimestamps !== null) {
+  showTimestamps =
+    savedTimestamps !== "false";
+}
+
+if (groupingToggle) {
+  groupingToggle.checked =
+    messageGrouping;
+}
+
+if (timestampsToggle) {
+  timestampsToggle.checked =
+    showTimestamps;
+}
+
+/* =========================================================
+   CONNECTION
+   ========================================================= */
+
+function getWebSocketURL() {
+  const protocol =
+    window.location.protocol === "https:"
+      ? "wss:"
+      : "ws:";
+
+  return `${protocol}//${window.location.host}`;
 }
 
 function connect() {
-  intentionallyClosed = false;
+  if (!session) return;
+
+  manuallyLoggedOut = false;
+
+  clearTimeout(reconnectTimer);
 
   if (
     socket &&
     (
-      socket.readyState ===
-        WebSocket.OPEN ||
-      socket.readyState ===
-        WebSocket.CONNECTING
+      socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING
     )
   ) {
     return;
   }
 
-  const protocol =
-    location.protocol === "https:"
-      ? "wss:"
-      : "ws:";
+  setConnectionStatus(
+    "connecting",
+    "CONNECTING"
+  );
 
   socket = new WebSocket(
-    `${protocol}//${location.host}`
+    getWebSocketURL()
   );
 
   socket.addEventListener(
     "open",
     () => {
-      if (!session) {
-        socket.close();
-        return;
-      }
+      setConnectionStatus(
+        "connected",
+        "ONLINE"
+      );
 
       socket.send(
         JSON.stringify({
           type: "login",
-          username:
-            session.username,
-          password:
-            session.password
+          username: session.username,
+          password: session.password
         })
       );
     }
@@ -345,196 +215,22 @@ function connect() {
 
   socket.addEventListener(
     "message",
-    event => {
-      let data;
-
-      try {
-        data = JSON.parse(
-          event.data
-        );
-      } catch (err) {
-        return;
-      }
-
-
-      /* LOGIN SUCCESS */
-
-      if (
-        data.type ===
-        "login_success"
-      ) {
-        authenticated = true;
-
-        canWipeChat =
-          data.canWipeChat === true;
-
-        updateWipeVisibility();
-
-        setStatus(true);
-        enterChat();
-
-        return;
-      }
-
-
-      /* LOGIN ERROR */
-
-      if (
-        data.type ===
-        "login_error"
-      ) {
-        intentionallyClosed = true;
-
-        clearTimeout(
-          reconnectTimer
-        );
-
-        if (socket) {
-          socket.close();
-        }
-
-        socket = null;
-
-        setStatus(false);
-
-        const wasIn =
-          authenticated;
-
-        returnToLogin(
-          wasIn
-            ? "Session ended. Log in again."
-            : data.message
-        );
-
-        return;
-      }
-
-
-      /* HISTORY */
-
-      if (
-        data.type === "history"
-      ) {
-        el.messages.innerHTML = "";
-
-        lastRendered = null;
-
-        data.messages.forEach(
-          addMessage
-        );
-
-        renderEmptyState();
-
-        scrollToBottom();
-
-        return;
-      }
-
-
-      /* NEW MESSAGE */
-
-      if (
-        data.type === "message"
-      ) {
-        const stick =
-          isNearBottom();
-
-        removeEmptyState();
-
-        addMessage(
-          data.message
-        );
-
-        if (stick) {
-          scrollToBottom();
-        }
-
-        return;
-      }
-
-
-      /* CHAT WIPED */
-
-      if (
-        data.type ===
-        "chat_wiped"
-      ) {
-        el.messages.innerHTML =
-          "";
-
-        lastRendered = null;
-
-        renderEmptyState();
-
-        closeWipeModal();
-        openSettings(false);
-
-        return;
-      }
-
-
-      /* WIPE ERROR */
-
-      if (
-        data.type ===
-        "wipe_error"
-      ) {
-        showWipeError(
-          data.message
-        );
-
-        return;
-      }
-
-
-      /* PRESENCE */
-
-      if (
-        data.type ===
-        "presence"
-      ) {
-        onlineSet =
-          new Set(data.users);
-
-        renderMembers();
-
-        return;
-      }
-
-
-      /* GENERIC ERROR */
-
-      if (
-        data.type === "error"
-      ) {
-        console.warn(
-          data.message
-        );
-      }
-    }
+    handleSocketMessage
   );
 
   socket.addEventListener(
     "close",
     () => {
-      setStatus(false);
-
-      onlineSet = new Set();
-      renderMembers();
+      setConnectionStatus(
+        "offline",
+        "OFFLINE"
+      );
 
       if (
-        !intentionallyClosed &&
-        session
+        authenticated &&
+        !manuallyLoggedOut
       ) {
-        clearTimeout(
-          reconnectTimer
-        );
-
-        reconnectTimer =
-          setTimeout(
-            connect,
-            2000
-          );
+        scheduleReconnect();
       }
     }
   );
@@ -542,31 +238,405 @@ function connect() {
   socket.addEventListener(
     "error",
     () => {
-      setStatus(false);
+      setConnectionStatus(
+        "offline",
+        "CONNECTION ERROR"
+      );
     }
   );
 }
 
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
 
-/* ---------------- composer ---------------- */
+  reconnectTimer = setTimeout(
+    () => {
+      connect();
+    },
+    2000
+  );
+}
 
-el.composer.addEventListener(
+/* =========================================================
+   SOCKET EVENTS
+   ========================================================= */
+
+function handleSocketMessage(event) {
+  let data;
+
+  try {
+    data = JSON.parse(event.data);
+  } catch {
+    return;
+  }
+
+  switch (data.type) {
+    case "login_success":
+      handleLoginSuccess(data);
+      break;
+
+    case "login_error":
+      handleLoginError(data);
+      break;
+
+    case "history":
+      renderHistory(data.messages || []);
+      break;
+
+    case "message":
+      addMessage(
+        data.message,
+        true
+      );
+      break;
+
+    case "presence":
+      onlineSet = new Set(
+        data.users || []
+      );
+
+      renderMembers();
+      break;
+
+    case "chat_wiped":
+      clearMessages();
+
+      showSystemMessage(
+        `Chat wiped by ${displayName(data.by)}.`
+      );
+
+      break;
+
+    case "wipe_error":
+      showWipeError(data.message);
+      break;
+
+    case "error":
+      showToast(data.message);
+      break;
+  }
+}
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+loginForm.addEventListener(
   "submit",
-  event => {
+  (event) => {
     event.preventDefault();
 
-    const message =
-      el.input.value.trim();
+    const username =
+      usernameInput.value
+        .trim()
+        .toLowerCase();
+
+    const password =
+      passwordInput.value;
+
+    if (!username) {
+      showLoginError(
+        "Enter your username."
+      );
+
+      usernameInput.focus();
+
+      return;
+    }
+
+    if (!password) {
+      showLoginError(
+        "Enter your password."
+      );
+
+      passwordInput.focus();
+
+      return;
+    }
+
+    session = {
+      username,
+      password
+    };
+
+    loginButton.disabled = true;
+
+    loginButton.textContent =
+      "CONNECTING…";
+
+    hideLoginError();
+
+    connect();
+  }
+);
+
+function handleLoginSuccess(data) {
+  authenticated = true;
+
+  canWipeChat =
+    Boolean(data.canWipeChat);
+
+  currentUserLabel.textContent =
+    displayName(data.username);
+
+  /*
+   * The server provides the public user
+   * directory. Passwords are never included.
+   */
+  userDirectory = new Map(
+    (data.users || []).map(
+      (user) => [
+        user.username,
+        user
+      ]
+    )
+  );
+
+  loginScreen.classList.add(
+    "is-hidden"
+  );
+
+  chatScreen.classList.add(
+    "is-visible"
+  );
+
+  document.body.classList.add(
+    "chat-active"
+  );
+
+  if (wipeSection) {
+    wipeSection.classList.toggle(
+      "is-hidden",
+      !canWipeChat
+    );
+  }
+
+  renderMembers();
+
+  loginButton.disabled = false;
+
+  loginButton.textContent =
+    "SIGN IN →";
+
+  passwordInput.value = "";
+
+  setTimeout(() => {
+    messageInput.focus();
+  }, 150);
+}
+
+function handleLoginError(data) {
+  authenticated = false;
+
+  loginButton.disabled = false;
+
+  loginButton.textContent =
+    "SIGN IN →";
+
+  showLoginError(
+    data.message ||
+      "Incorrect username or password."
+  );
+
+  if (socket) {
+    socket.close();
+  }
+
+  session = null;
+
+  passwordInput.select();
+}
+
+function showLoginError(message) {
+  loginError.textContent = message;
+
+  loginError.classList.add(
+    "is-visible"
+  );
+}
+
+function hideLoginError() {
+  loginError.textContent = "";
+
+  loginError.classList.remove(
+    "is-visible"
+  );
+}
+
+/* =========================================================
+   MESSAGES
+   ========================================================= */
+
+function renderHistory(messages) {
+  chatMessages.innerHTML = "";
+
+  messages.forEach((message) => {
+    addMessage(
+      message,
+      false
+    );
+  });
+
+  scrollToBottom();
+}
+
+function addMessage(message, shouldScroll = true) {
+  if (!message) return;
+
+  const info =
+    userDirectory.get(
+      message.username
+    ) || {
+      username: message.username,
+      displayName:
+        formatUsername(
+          message.username
+        ),
+      slot: 1
+    };
+
+  const lastMessage =
+    chatMessages.lastElementChild;
+
+  const grouped =
+    messageGrouping &&
+    lastMessage &&
+    lastMessage.dataset.username ===
+      message.username;
+
+  const row =
+    document.createElement("article");
+
+  row.className =
+    "message-row";
+
+  if (grouped) {
+    row.classList.add(
+      "is-grouped"
+    );
+  }
+
+  row.dataset.username =
+    message.username;
+
+  const avatar =
+    document.createElement("div");
+
+  avatar.className =
+    `message-avatar user-slot-${info.slot || 1}`;
+
+  avatar.textContent =
+    getInitial(info.displayName);
+
+  const content =
+    document.createElement("div");
+
+  content.className =
+    "message-content";
+
+  const meta =
+    document.createElement("div");
+
+  meta.className =
+    "message-meta";
+
+  const name =
+    document.createElement("span");
+
+  name.className =
+    `message-name user-slot-text-${info.slot || 1}`;
+
+  name.textContent =
+    info.displayName;
+
+  meta.appendChild(name);
+
+  if (showTimestamps) {
+    const time =
+      document.createElement("time");
+
+    time.className =
+      "message-time";
+
+    time.textContent =
+      formatTime(message.created_at);
+
+    meta.appendChild(time);
+  }
+
+  const bubble =
+    document.createElement("div");
+
+  bubble.className =
+    "message-bubble";
+
+  bubble.textContent =
+    message.message;
+
+  content.appendChild(meta);
+  content.appendChild(bubble);
+
+  row.appendChild(avatar);
+  row.appendChild(content);
+
+  chatMessages.appendChild(row);
+
+  if (shouldScroll) {
+    scrollToBottom();
+  }
+}
+
+function clearMessages() {
+  chatMessages.innerHTML = "";
+}
+
+function showSystemMessage(message) {
+  const system =
+    document.createElement("div");
+
+  system.className =
+    "system-message";
+
+  system.textContent =
+    message;
+
+  chatMessages.appendChild(system);
+
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    chatMessages.scrollTop =
+      chatMessages.scrollHeight;
+  });
+}
+
+/* =========================================================
+   SEND MESSAGE
+   ========================================================= */
+
+messageForm.addEventListener(
+  "submit",
+  (event) => {
+    event.preventDefault();
 
     if (
-      !message ||
-      !authenticated ||
       !socket ||
       socket.readyState !==
         WebSocket.OPEN
     ) {
+      showToast(
+        "You are not connected."
+      );
+
       return;
     }
+
+    const message =
+      messageInput.value.trim();
+
+    if (!message) return;
 
     socket.send(
       JSON.stringify({
@@ -575,25 +645,500 @@ el.composer.addEventListener(
       })
     );
 
-    el.input.value = "";
-    el.input.focus();
+    messageInput.value = "";
+
+    messageInput.focus();
   }
 );
 
+messageInput.addEventListener(
+  "keydown",
+  (event) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
 
-/* ---------------- message rendering ---------------- */
+      messageForm.requestSubmit();
+    }
+  }
+);
 
-function displayName(value) {
-  return (
-    value.charAt(0).toUpperCase() +
-    value.slice(1)
+/* =========================================================
+   MEMBERS
+   ========================================================= */
+
+function renderMembers() {
+  if (!membersList) return;
+
+  membersList.innerHTML = "";
+
+  const users =
+    [...userDirectory.values()];
+
+  users.forEach((user) => {
+    const item =
+      document.createElement("div");
+
+    item.className =
+      "member";
+
+    if (
+      onlineSet.has(
+        user.username
+      )
+    ) {
+      item.classList.add(
+        "is-online"
+      );
+    }
+
+    const avatar =
+      document.createElement("div");
+
+    avatar.className =
+      `member-avatar user-slot-${user.slot || 1}`;
+
+    avatar.textContent =
+      getInitial(
+        user.displayName
+      );
+
+    const info =
+      document.createElement("div");
+
+    info.className =
+      "member-info";
+
+    const name =
+      document.createElement("strong");
+
+    name.textContent =
+      user.displayName;
+
+    const status =
+      document.createElement("span");
+
+    status.textContent =
+      onlineSet.has(
+        user.username
+      )
+        ? "Online"
+        : "Offline";
+
+    info.appendChild(name);
+    info.appendChild(status);
+
+    const dot =
+      document.createElement("span");
+
+    dot.className =
+      "member-dot";
+
+    item.appendChild(avatar);
+    item.appendChild(info);
+    item.appendChild(dot);
+
+    membersList.appendChild(item);
+  });
+
+  if (onlineCount) {
+    onlineCount.textContent =
+      onlineSet.size;
+  }
+}
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+if (settingsButton) {
+  settingsButton.addEventListener(
+    "click",
+    () => {
+      settingsPanel.classList.add(
+        "is-open"
+      );
+    }
   );
 }
 
-function formatTime(value) {
-  return new Date(
-    value
-  ).toLocaleTimeString(
+if (closeSettingsButton) {
+  closeSettingsButton.addEventListener(
+    "click",
+    () => {
+      settingsPanel.classList.remove(
+        "is-open"
+      );
+    }
+  );
+}
+
+themeButtons.forEach((button) => {
+  button.addEventListener(
+    "click",
+    () => {
+      const theme =
+        button.dataset.themeChoice;
+
+      document.documentElement.dataset.theme =
+        theme;
+
+      localStorage.setItem(
+        "chatTheme",
+        theme
+      );
+
+      themeButtons.forEach(
+        (other) => {
+          other.classList.toggle(
+            "is-active",
+            other === button
+          );
+        }
+      );
+    }
+  );
+});
+
+if (groupingToggle) {
+  groupingToggle.addEventListener(
+    "change",
+    () => {
+      messageGrouping =
+        groupingToggle.checked;
+
+      localStorage.setItem(
+        "messageGrouping",
+        String(messageGrouping)
+      );
+
+      if (authenticated) {
+        renderHistoryFromDOM();
+      }
+    }
+  );
+}
+
+if (timestampsToggle) {
+  timestampsToggle.addEventListener(
+    "change",
+    () => {
+      showTimestamps =
+        timestampsToggle.checked;
+
+      localStorage.setItem(
+        "showTimestamps",
+        String(showTimestamps)
+      );
+
+      if (authenticated) {
+        rerenderMessages();
+      }
+    }
+  );
+}
+
+/*
+ * Re-render existing messages without
+ * losing their content.
+ */
+function rerenderMessages() {
+  const rows =
+    [...chatMessages.querySelectorAll(
+      ".message-row"
+    )];
+
+  const data = rows.map((row) => ({
+    username:
+      row.dataset.username,
+
+    message:
+      row.querySelector(
+        ".message-bubble"
+      )?.textContent || "",
+
+    created_at:
+      row.querySelector(
+        ".message-time"
+      )?.dataset?.timestamp || null
+  }));
+
+  /*
+   * Timestamp rendering is simpler to
+   * refresh by reloading the visible DOM
+   * content from existing elements.
+   */
+  rows.forEach((row) => {
+    const meta =
+      row.querySelector(
+        ".message-meta"
+      );
+
+    if (!meta) return;
+
+    let time =
+      meta.querySelector(
+        ".message-time"
+      );
+
+    if (
+      showTimestamps &&
+      !time
+    ) {
+      time =
+        document.createElement("span");
+
+      time.className =
+        "message-time";
+
+      time.textContent = "";
+
+      meta.appendChild(time);
+    }
+
+    if (
+      !showTimestamps &&
+      time
+    ) {
+      time.remove();
+    }
+  });
+
+  /*
+   * Grouping classes.
+   */
+  rows.forEach((row, index) => {
+    const previous =
+      rows[index - 1];
+
+    const grouped =
+      messageGrouping &&
+      previous &&
+      previous.dataset.username ===
+        row.dataset.username;
+
+    row.classList.toggle(
+      "is-grouped",
+      Boolean(grouped)
+    );
+  });
+}
+
+function renderHistoryFromDOM() {
+  const rows =
+    [...chatMessages.querySelectorAll(
+      ".message-row"
+    )];
+
+  rows.forEach(
+    (row, index) => {
+      const previous =
+        rows[index - 1];
+
+      const grouped =
+        messageGrouping &&
+        previous &&
+        previous.dataset.username ===
+          row.dataset.username;
+
+      row.classList.toggle(
+        "is-grouped",
+        Boolean(grouped)
+      );
+    }
+  );
+}
+
+/* =========================================================
+   WIPE CHAT
+   ========================================================= */
+
+if (wipeButton) {
+  wipeButton.addEventListener(
+    "click",
+    () => {
+      if (!canWipeChat) return;
+
+      wipePassword.value = "";
+
+      wipeError.textContent = "";
+
+      wipeModal.classList.add(
+        "is-open"
+      );
+
+      setTimeout(() => {
+        wipePassword.focus();
+      }, 100);
+    }
+  );
+}
+
+if (wipeCancel) {
+  wipeCancel.addEventListener(
+    "click",
+    () => {
+      wipeModal.classList.remove(
+        "is-open"
+      );
+    }
+  );
+}
+
+if (wipeForm) {
+  wipeForm.addEventListener(
+    "submit",
+    (event) => {
+      event.preventDefault();
+
+      if (
+        !socket ||
+        socket.readyState !==
+          WebSocket.OPEN
+      ) {
+        showWipeError(
+          "You are not connected."
+        );
+
+        return;
+      }
+
+      socket.send(
+        JSON.stringify({
+          type: "wipe_chat",
+          password:
+            wipePassword.value
+        })
+      );
+    }
+  );
+}
+
+function showWipeError(message) {
+  if (!wipeError) return;
+
+  wipeError.textContent =
+    message || "Something went wrong.";
+
+  wipeError.classList.add(
+    "is-visible"
+  );
+}
+
+/* =========================================================
+   LOGOUT
+   ========================================================= */
+
+logoutButton.addEventListener(
+  "click",
+  () => {
+    manuallyLoggedOut = true;
+
+    authenticated = false;
+
+    canWipeChat = false;
+
+    onlineSet.clear();
+
+    userDirectory.clear();
+
+    if (socket) {
+      socket.close();
+      socket = null;
+    }
+
+    clearTimeout(reconnectTimer);
+
+    session = null;
+
+    chatMessages.innerHTML = "";
+
+    passwordInput.value = "";
+
+    usernameInput.value = "";
+
+    loginScreen.classList.remove(
+      "is-hidden"
+    );
+
+    chatScreen.classList.remove(
+      "is-visible"
+    );
+
+    document.body.classList.remove(
+      "chat-active"
+    );
+
+    hideLoginError();
+
+    settingsPanel.classList.remove(
+      "is-open"
+    );
+
+    wipeModal.classList.remove(
+      "is-open"
+    );
+
+    setConnectionStatus(
+      "offline",
+      "OFFLINE"
+    );
+
+    usernameInput.focus();
+  }
+);
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function displayName(username) {
+  const user =
+    userDirectory.get(username);
+
+  if (user) {
+    return user.displayName;
+  }
+
+  return formatUsername(username);
+}
+
+function formatUsername(username) {
+  if (!username) return "";
+
+  return username.charAt(0).toUpperCase() +
+    username.slice(1);
+}
+
+function getInitial(name) {
+  return (
+    name ||
+    "?"
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+}
+
+function formatTime(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const date =
+    new Date(dateString);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return date.toLocaleTimeString(
     [],
     {
       hour: "2-digit",
@@ -602,530 +1147,57 @@ function formatTime(value) {
   );
 }
 
-function addMessage(message) {
-  removeEmptyState();
+function setConnectionStatus(
+  state,
+  text
+) {
+  if (!connectionStatus) return;
 
-  const mine =
-    session &&
-    message.username ===
-      session.username;
+  connectionStatus.textContent =
+    text;
 
-  const stamp =
-    new Date(
-      message.created_at
-    ).getTime();
-
-  const grouped =
-    prefs.grouping &&
-    lastRendered &&
-    lastRendered.username ===
-      message.username &&
-    stamp -
-      lastRendered.time <
-      5 * 60 * 1000;
-
-  const row =
-    document.createElement(
-      "div"
-    );
-
-  row.className =
-    "msg" +
-    (mine ? " mine" : "") +
-    (grouped
-      ? " grouped"
-      : "");
-
-  const avatar =
-    document.createElement(
-      "div"
-    );
-
-  avatar.className =
-    "msg-avatar";
-
-  avatar.style.background =
-    `var(--user-${message.username})`;
-
-  avatar.style.color =
-    `var(--user-${message.username}-fg)`;
-
-  avatar.textContent =
-    displayName(
-      message.username
-    ).charAt(0);
-
-  avatar.setAttribute(
-    "aria-hidden",
-    "true"
-  );
-
-  const body =
-    document.createElement(
-      "div"
-    );
-
-  body.className =
-    "msg-body";
-
-  if (!grouped) {
-    const meta =
-      document.createElement(
-        "div"
-      );
-
-    meta.className =
-      "msg-meta";
-
-    const name =
-      document.createElement(
-        "span"
-      );
-
-    name.className =
-      "msg-name";
-
-    name.style.color =
-      `var(--user-${message.username})`;
-
-    name.textContent =
-      mine
-        ? "You"
-        : displayName(
-            message.username
-          );
-
-    const time =
-      document.createElement(
-        "span"
-      );
-
-    time.className =
-      "msg-time";
-
-    time.textContent =
-      formatTime(
-        message.created_at
-      );
-
-    meta.append(
-      name,
-      time
-    );
-
-    body.appendChild(
-      meta
-    );
-  }
-
-  const text =
-    document.createElement(
-      "div"
-    );
-
-  text.className =
-    "msg-text";
-
-  text.textContent =
-    message.message;
-
-  body.appendChild(
-    text
-  );
-
-  row.append(
-    avatar,
-    body
-  );
-
-  el.messages.appendChild(
-    row
-  );
-
-  lastRendered = {
-    username:
-      message.username,
-    time: stamp
-  };
+  connectionStatus.dataset.state =
+    state;
 }
 
+function showToast(message) {
+  const toast =
+    document.createElement("div");
 
-/* ---------------- empty chat ---------------- */
+  toast.className =
+    "toast";
 
-function renderEmptyState() {
-  if (
-    el.messages.querySelector(
-      ".empty-chat"
-    )
-  ) {
-    return;
-  }
-
-  const empty =
-    document.createElement(
-      "div"
-    );
-
-  empty.className =
-    "empty-chat";
-
-  empty.innerHTML = `
-    <div
-      class="empty-chat-mark"
-      aria-hidden="true"
-    >✳</div>
-
-    <h2>NO MESSAGES YET</h2>
-
-    <p>Start the conversation.</p>
-  `;
-
-  el.messages.appendChild(
-    empty
-  );
-}
-
-function removeEmptyState() {
-  const empty =
-    el.messages.querySelector(
-      ".empty-chat"
-    );
-
-  if (empty) {
-    empty.remove();
-  }
-}
-
-
-/* ---------------- members ---------------- */
-
-function renderMembers() {
-  el.members.innerHTML = "";
-
-  USERS.forEach(user => {
-    const online =
-      onlineSet.has(user);
-
-    const item =
-      document.createElement(
-        "li"
-      );
-
-    item.className =
-      "member" +
-      (
-        online
-          ? " is-online"
-          : ""
-      );
-
-    const avatar =
-      document.createElement(
-        "span"
-      );
-
-    avatar.className =
-      "member-avatar";
-
-    avatar.style.background =
-      `var(--user-${user})`;
-
-    avatar.style.color =
-      `var(--user-${user}-fg)`;
-
-    avatar.textContent =
-      displayName(user)
-        .charAt(0);
-
-    const dot =
-      document.createElement(
-        "span"
-      );
-
-    dot.className =
-      "member-dot";
-
-    dot.textContent =
-      online ? "●" : "○";
-
-    const name =
-      document.createElement(
-        "span"
-      );
-
-    name.className =
-      "member-name";
-
-    name.textContent =
-      displayName(user);
-
-    item.append(
-      avatar,
-      dot,
-      name
-    );
-
-    item.title =
-      `${displayName(user)} — ${
-        online
-          ? "online"
-          : "offline"
-      }`;
-
-    el.members.appendChild(
-      item
-    );
-  });
-}
-
-
-/* ---------------- scrolling ---------------- */
-
-function isNearBottom() {
-  const gap =
-    el.messages.scrollHeight -
-    el.messages.scrollTop -
-    el.messages.clientHeight;
-
-  return gap < 140;
-}
-
-function scrollToBottom() {
-  el.messages.scrollTop =
-    el.messages.scrollHeight;
-}
-
-
-/* ---------------- settings ---------------- */
-
-function openSettings(open) {
-  el.settings.classList.toggle(
-    "hidden",
-    !open
-  );
-
-  el.settingsOverlay.classList.toggle(
-    "hidden",
-    !open
-  );
-
-  el.settingsBtn.setAttribute(
-    "aria-expanded",
-    String(open)
-  );
-}
-
-el.settingsBtn.addEventListener(
-  "click",
-  () => {
-    openSettings(
-      el.settings.classList.contains(
-        "hidden"
-      )
-    );
-  }
-);
-
-el.settingsClose.addEventListener(
-  "click",
-  () => openSettings(false)
-);
-
-el.settingsOverlay.addEventListener(
-  "click",
-  () => openSettings(false)
-);
-
-document.addEventListener(
-  "keydown",
-  event => {
-    if (event.key === "Escape") {
-      openSettings(false);
-      closeWipeModal();
-    }
-  }
-);
-
-
-/* ---------------- theme controls ---------------- */
-
-document
-  .querySelectorAll(
-    "[data-theme-value]"
-  )
-  .forEach(btn => {
-    btn.addEventListener(
-      "click",
-      () => {
-        prefs.theme =
-          btn.dataset.themeValue;
-
-        applyPrefs();
-        savePrefs();
-      }
-    );
-  });
-
-
-/* ---------------- chat settings ---------------- */
-
-document
-  .querySelectorAll(
-    "[data-setting]"
-  )
-  .forEach(btn => {
-    btn.addEventListener(
-      "click",
-      () => {
-        const key =
-          btn.dataset.setting;
-
-        prefs[key] =
-          !prefs[key];
-
-        applyPrefs();
-        savePrefs();
-      }
-    );
-  });
-
-
-/* ---------------- wipe chat ---------------- */
-
-function updateWipeVisibility() {
-  if (!el.wipeSection) return;
-
-  el.wipeSection.classList.toggle(
-    "hidden",
-    !canWipeChat
-  );
-}
-
-function openWipeModal() {
-  if (!canWipeChat) return;
-
-  el.wipePassword.value = "";
-  el.wipeError.hidden = true;
-
-  el.wipeModal.classList.remove(
-    "hidden"
-  );
-
-  el.wipePassword.focus();
-}
-
-function closeWipeModal() {
-  if (!el.wipeModal) return;
-
-  el.wipeModal.classList.add(
-    "hidden"
-  );
-
-  el.wipePassword.value = "";
-  el.wipeError.hidden = true;
-
-  if (el.wipeConfirm) {
-    el.wipeConfirm.disabled =
-      false;
-  }
-}
-
-function showWipeError(message) {
-  el.wipeError.textContent =
+  toast.textContent =
     message;
 
-  el.wipeError.hidden = false;
-}
+  document.body.appendChild(toast);
 
-el.wipeBtn?.addEventListener(
-  "click",
-  openWipeModal
-);
+  requestAnimationFrame(() => {
+    toast.classList.add(
+      "is-visible"
+    );
+  });
 
-el.wipeCancel?.addEventListener(
-  "click",
-  closeWipeModal
-);
-
-el.wipeModal?.addEventListener(
-  "click",
-  event => {
-    if (
-      event.target ===
-      el.wipeModal
-    ) {
-      closeWipeModal();
-    }
-  }
-);
-
-el.wipeConfirm?.addEventListener(
-  "click",
-  () => {
-    if (
-      !authenticated ||
-      !canWipeChat
-    ) {
-      return;
-    }
-
-    const password =
-      el.wipePassword.value;
-
-    if (!password) {
-      showWipeError(
-        "Enter the admin password."
-      );
-
-      return;
-    }
-
-    if (
-      !socket ||
-      socket.readyState !==
-        WebSocket.OPEN
-    ) {
-      showWipeError(
-        "Not connected to the server."
-      );
-
-      return;
-    }
-
-    el.wipeConfirm.disabled =
-      true;
-
-    socket.send(
-      JSON.stringify({
-        type: "wipe_chat",
-        password
-      })
+  setTimeout(() => {
+    toast.classList.remove(
+      "is-visible"
     );
 
-    /*
-     * Re-enable if the server doesn't
-     * respond. A successful wipe closes
-     * the modal immediately.
-     */
     setTimeout(() => {
-      if (
-        el.wipeConfirm &&
-        !el.wipeModal.classList.contains(
-          "hidden"
-        )
-      ) {
-        el.wipeConfirm.disabled =
-          false;
-      }
-    }, 2000);
-  }
+      toast.remove();
+    }, 250);
+  }, 3000);
+}
+
+/* =========================================================
+   INITIAL STATE
+   ========================================================= */
+
+setConnectionStatus(
+  "offline",
+  "OFFLINE"
 );
 
-
-/* ---------------- boot ---------------- */
-
-loadPrefs();
-applyPrefs();
-renderMembers();
-setStatus(false);
-updateWipeVisibility();
+if (usernameInput) {
+  usernameInput.focus();
+}
