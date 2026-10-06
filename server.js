@@ -6,6 +6,7 @@ const { Pool } = require("pg");
 const { WebSocketServer } = require("ws");
 
 const PORT = process.env.PORT || 10000;
+
 const app = express();
 const server = http.createServer(app);
 
@@ -20,21 +21,154 @@ const MAX_HISTORY = 200;
 const MAX_MESSAGE_LENGTH = 2000;
 const HEARTBEAT_INTERVAL = 30000;
 
-/*
- * Passwords are server-side only.
- *
- * Render environment variables override these defaults.
- */
-const USER_PASSWORDS = {
-  aayush: process.env.PASSWORD_AAYUSH || "chat-server-ADMIN",
-  hari: process.env.PASSWORD_HARI || "chat-server-1",
-  aditya: process.env.PASSWORD_ADITYA || "chat-server-2"
-};
+/* =========================================================
+   USER CONFIGURATION
+   =========================================================
+   
+   Users are controlled through Render environment variables.
+
+   Example:
+
+   CHAT_USER_1_NAME=aayush
+   CHAT_USER_1_PASSWORD=...
+   CHAT_USER_2_NAME=hari
+   CHAT_USER_2_PASSWORD=...
+
+   This means the frontend never contains passwords.
+   ========================================================= */
+
+const USER_COLORS = [
+  {
+    color: "#7b2ff7",
+    foreground: "#ffffff"
+  },
+  {
+    color: "#16c96b",
+    foreground: "#07150d"
+  },
+  {
+    color: "#5aa9ff",
+    foreground: "#07101c"
+  },
+  {
+    color: "#ff6fae",
+    foreground: "#1a0710"
+  },
+  {
+    color: "#ffc928",
+    foreground: "#171000"
+  },
+  {
+    color: "#ff7043",
+    foreground: "#ffffff"
+  },
+  {
+    color: "#00bfa6",
+    foreground: "#031310"
+  },
+  {
+    color: "#9b8cff",
+    foreground: "#ffffff"
+  }
+];
+
+function loadUsers() {
+  const users = [];
+
+  for (let i = 1; i <= 20; i++) {
+    const rawName = process.env[`CHAT_USER_${i}_NAME`];
+    const password = process.env[`CHAT_USER_${i}_PASSWORD`];
+
+    /*
+     * Empty slots are allowed.
+     */
+    if (!rawName && !password) {
+      continue;
+    }
+
+    if (!rawName || !password) {
+      throw new Error(
+        `CHAT_USER_${i}_NAME and CHAT_USER_${i}_PASSWORD must both be set.`
+      );
+    }
+
+    const username = rawName.trim().toLowerCase();
+
+    if (!/^[a-z0-9_-]+$/.test(username)) {
+      throw new Error(
+        `Invalid username "${username}". Usernames may only contain letters, numbers, "_" and "-".`
+      );
+    }
+
+    users.push({
+      username,
+      password,
+      slot: users.length + 1,
+      displayName: username.charAt(0).toUpperCase() + username.slice(1),
+      color:
+        USER_COLORS[users.length % USER_COLORS.length].color,
+      foreground:
+        USER_COLORS[users.length % USER_COLORS.length].foreground
+    });
+  }
+
+  if (users.length === 0) {
+    throw new Error(
+      "No users configured. Add CHAT_USER_1_NAME/PASSWORD and the other user environment variables."
+    );
+  }
+
+  const usernames = users.map((user) => user.username);
+  const uniqueUsernames = new Set(usernames);
+
+  if (uniqueUsernames.size !== usernames.length) {
+    throw new Error("Duplicate chat usernames detected.");
+  }
+
+  return users;
+}
+
+const USERS = loadUsers();
+
+const USER_MAP = new Map(
+  USERS.map((user) => [user.username, user])
+);
+
+const ADMIN_USERNAME = (
+  process.env.CHAT_ADMIN_USERNAME || "aayush"
+)
+  .trim()
+  .toLowerCase();
 
 const WIPE_CHAT_PASSWORD =
-  process.env.WIPE_CHAT_PASSWORD || "chat-server-ADMIN";
+  process.env.WIPE_CHAT_PASSWORD || "";
 
-const ALLOWED_USERS = new Set(Object.keys(USER_PASSWORDS));
+if (!USER_MAP.has(ADMIN_USERNAME)) {
+  throw new Error(
+    `CHAT_ADMIN_USERNAME "${ADMIN_USERNAME}" does not match a configured user.`
+  );
+}
+
+/*
+ * Public information only.
+ *
+ * Passwords are NEVER sent to the browser.
+ */
+const PUBLIC_USERS = USERS.map((user) => ({
+  username: user.username,
+  displayName: user.displayName,
+  slot: user.slot,
+  color: user.color,
+  foreground: user.foreground
+}));
+
+const ALLOWED_USERS = new Set(
+  USERS.map((user) => user.username)
+);
+
+/* =========================================================
+   PASSWORD VERIFICATION
+   ========================================================= */
 
 function verifySecret(expected, candidate) {
   if (
@@ -58,22 +192,29 @@ function verifySecret(expected, candidate) {
 }
 
 function verifyPassword(username, candidate) {
-  if (!ALLOWED_USERS.has(username)) return false;
+  if (!ALLOWED_USERS.has(username)) {
+    return false;
+  }
+
+  const user = USER_MAP.get(username);
 
   return verifySecret(
-    USER_PASSWORDS[username],
+    user.password,
     String(candidate ?? "")
   );
 }
 
-/*
- * Only Aayush's account can use the wipe function.
- */
 function isAdmin(username) {
-  return username === "aayush";
+  return username === ADMIN_USERNAME;
 }
 
-app.use(express.static(path.join(__dirname, "public")));
+/* =========================================================
+   EXPRESS
+   ========================================================= */
+
+app.use(
+  express.static(path.join(__dirname, "public"))
+);
 
 app.get("/health", async (req, res) => {
   try {
@@ -93,10 +234,14 @@ app.get("/health", async (req, res) => {
   }
 });
 
+/* =========================================================
+   DATABASE
+   ========================================================= */
+
 async function initDatabase() {
   if (!process.env.DATABASE_URL) {
     throw new Error(
-      "DATABASE_URL is missing. Add a PostgreSQL database and set DATABASE_URL."
+      "DATABASE_URL is missing. Add your Render PostgreSQL database connection."
     );
   }
 
@@ -154,6 +299,10 @@ async function wipeMessages() {
   );
 }
 
+/* =========================================================
+   WEBSOCKET
+   ========================================================= */
+
 const wss = new WebSocketServer({ server });
 
 function send(ws, payload) {
@@ -209,9 +358,10 @@ wss.on("connection", (ws) => {
     try {
       const data = JSON.parse(raw.toString());
 
-      /*
-       * LOGIN
-       */
+      /* =====================================================
+         LOGIN
+         ===================================================== */
+
       if (data.type === "login") {
         const username = String(
           data.username || ""
@@ -219,13 +369,18 @@ wss.on("connection", (ws) => {
           .trim()
           .toLowerCase();
 
+        const password = String(
+          data.password || ""
+        );
+
         if (
           !ALLOWED_USERS.has(username) ||
-          !verifyPassword(username, data.password)
+          !verifyPassword(username, password)
         ) {
           send(ws, {
             type: "login_error",
-            message: "Incorrect username or password."
+            message:
+              "Incorrect username or password."
           });
 
           return;
@@ -236,7 +391,8 @@ wss.on("connection", (ws) => {
         send(ws, {
           type: "login_success",
           username,
-          canWipeChat: isAdmin(username)
+          canWipeChat: isAdmin(username),
+          users: PUBLIC_USERS
         });
 
         try {
@@ -245,11 +401,15 @@ wss.on("connection", (ws) => {
             messages: await getHistory()
           });
         } catch (err) {
-          console.error("History error:", err);
+          console.error(
+            "History error:",
+            err
+          );
 
           send(ws, {
             type: "error",
-            message: "Could not load chat history."
+            message:
+              "Could not load chat history."
           });
         }
 
@@ -258,9 +418,10 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      /*
-       * NORMAL MESSAGE
-       */
+      /* =====================================================
+         NORMAL MESSAGE
+         ===================================================== */
+
       if (data.type === "message") {
         if (!ws.username) {
           send(ws, {
@@ -277,7 +438,10 @@ wss.on("connection", (ws) => {
 
         if (!message) return;
 
-        if (message.length > MAX_MESSAGE_LENGTH) {
+        if (
+          message.length >
+          MAX_MESSAGE_LENGTH
+        ) {
           send(ws, {
             type: "error",
             message:
@@ -300,9 +464,10 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      /*
-       * WIPE CHAT
-       */
+      /* =====================================================
+         WIPE CHAT
+         ===================================================== */
+
       if (data.type === "wipe_chat") {
         if (!ws.username) {
           send(ws, {
@@ -313,10 +478,6 @@ wss.on("connection", (ws) => {
           return;
         }
 
-        /*
-         * Server-side admin check.
-         * Changing the frontend cannot bypass this.
-         */
         if (!isAdmin(ws.username)) {
           send(ws, {
             type: "wipe_error",
@@ -327,9 +488,6 @@ wss.on("connection", (ws) => {
           return;
         }
 
-        /*
-         * Verify the separate wipe password.
-         */
         if (
           !verifySecret(
             WIPE_CHAT_PASSWORD,
@@ -338,7 +496,8 @@ wss.on("connection", (ws) => {
         ) {
           send(ws, {
             type: "wipe_error",
-            message: "Incorrect admin password."
+            message:
+              "Incorrect admin password."
           });
 
           return;
@@ -347,19 +506,20 @@ wss.on("connection", (ws) => {
         try {
           await wipeMessages();
 
-          /*
-           * Tell every connected user immediately.
-           */
           broadcast({
             type: "chat_wiped",
             by: ws.username
           });
         } catch (err) {
-          console.error("Wipe error:", err);
+          console.error(
+            "Wipe error:",
+            err
+          );
 
           send(ws, {
             type: "wipe_error",
-            message: "Could not wipe the chat."
+            message:
+              "Could not wipe the chat."
           });
         }
 
@@ -373,7 +533,8 @@ wss.on("connection", (ws) => {
 
       send(ws, {
         type: "error",
-        message: "Something went wrong."
+        message:
+          "Something went wrong."
       });
     }
   });
@@ -393,9 +554,10 @@ wss.on("connection", (ws) => {
   });
 });
 
-/*
- * Keep WebSocket connections alive behind Render's proxy.
- */
+/* =========================================================
+   HEARTBEAT
+   ========================================================= */
+
 const heartbeat = setInterval(() => {
   for (const ws of wss.clients) {
     if (ws.isAlive === false) {
@@ -412,9 +574,10 @@ wss.on("close", () => {
   clearInterval(heartbeat);
 });
 
-/*
- * START SERVER
- */
+/* =========================================================
+   START SERVER
+   ========================================================= */
+
 initDatabase()
   .then(() => {
     server.listen(
@@ -423,6 +586,12 @@ initDatabase()
       () => {
         console.log(
           `Chat server listening on port ${PORT}`
+        );
+
+        console.log(
+          `Configured users: ${USERS.map(
+            (user) => user.username
+          ).join(", ")}`
         );
       }
     );
