@@ -1,8 +1,8 @@
 {
   "name": "private-chat-v2",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "description": "Private WebSocket chat with persistent PostgreSQL history",
+  "description": "Private WebSocket chat with PostgreSQL persistence and server-side user authentication",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
