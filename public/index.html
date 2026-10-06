@@ -1,101 +1,109 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="pop">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#080808"
   >
 
   <title>Chat Server</title>
 
-  <meta
-    name="description"
-    content="A private chat room for three people."
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
   >
 
-  <link rel="stylesheet" href="style.css">
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&display=swap"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
 
 <body>
 
-  <!-- ============ LOGIN ============ -->
+  <!-- =====================================================
+       LOGIN
+       ===================================================== -->
 
   <main
-    id="login"
-    class="screen login"
+    id="loginScreen"
+    class="login-screen"
   >
+    <div class="login-noise"></div>
 
-    <div
-      class="login-shapes"
-      aria-hidden="true"
-    >
-      <span class="shape shape-flag"></span>
-      <span class="shape shape-dot"></span>
-      <span class="shape shape-bar"></span>
-    </div>
+    <section class="login-card">
 
-    <div class="login-inner">
+      <div class="login-topline">
+        <span>PRIVATE</span>
+        <span>INVITE ONLY</span>
+      </div>
 
-      <p class="kicker">
-        PRIVATE // 3 PEOPLE ONLY
-      </p>
+      <div class="login-heading">
+        <div class="logo-mark">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
 
-      <h1 class="mega">
-        CHAT<br>SERVER
-      </h1>
+        <p class="eyebrow">
+          CHAT SERVER
+        </p>
 
-      <p class="ask">
-        WHO ARE YOU?
-      </p>
+        <h1>
+          Welcome<br>
+          back.
+        </h1>
 
-      <div
-        class="cards"
-        role="radiogroup"
-        aria-label="Choose your account"
-      >
-
-        <button
-          type="button"
-          class="card card-aayush"
-          data-user="aayush"
-          role="radio"
-          aria-checked="false"
-        >
-          <span class="card-letter">A</span>
-          <span class="card-name">Aayush</span>
-        </button>
-
-        <button
-          type="button"
-          class="card card-hari"
-          data-user="hari"
-          role="radio"
-          aria-checked="false"
-        >
-          <span class="card-letter">H</span>
-          <span class="card-name">Hari</span>
-        </button>
-
-        <button
-          type="button"
-          class="card card-aditya"
-          data-user="aditya"
-          role="radio"
-          aria-checked="false"
-        >
-          <span class="card-letter">A</span>
-          <span class="card-name">Aditya</span>
-        </button>
-
+        <p class="login-description">
+          Sign in to enter the private chat room.
+        </p>
       </div>
 
       <form
         id="loginForm"
         class="login-form"
-        autocomplete="off"
+        autocomplete="on"
       >
+
+        <label
+          class="field-label"
+          for="usernameInput"
+        >
+          USERNAME
+        </label>
+
+        <div class="input-wrap">
+          <span class="input-icon">@</span>
+
+          <input
+            id="usernameInput"
+            name="username"
+            type="text"
+            autocomplete="username"
+            placeholder="your username"
+            maxlength="32"
+            spellcheck="false"
+            required
+          >
+        </div>
 
         <label
           class="field-label"
@@ -104,169 +112,233 @@
           PASSWORD
         </label>
 
-        <div class="field-row">
+        <div class="input-wrap">
+          <span class="input-icon">✦</span>
 
           <input
             id="passwordInput"
             name="password"
             type="password"
-            autocomplete="off"
-            placeholder="••••••••"
+            autocomplete="current-password"
+            placeholder="your password"
+            maxlength="200"
             required
           >
-
-          <button
-            type="submit"
-            class="enter-btn"
-          >
-            ENTER
-            <span aria-hidden="true">→</span>
-          </button>
-
         </div>
 
         <p
           id="loginError"
           class="login-error"
-          role="alert"
-          hidden
+          aria-live="polite"
         ></p>
+
+        <button
+          id="loginButton"
+          class="login-submit"
+          type="submit"
+        >
+          SIGN IN →
+        </button>
 
       </form>
 
-    </div>
+      <div class="login-footer">
+        <span>PRIVATE CHAT</span>
+        <span>•</span>
+        <span>SECURE CONNECTION</span>
+      </div>
+
+    </section>
   </main>
 
 
-  <!-- ============ CHAT ============ -->
+  <!-- =====================================================
+       CHAT
+       ===================================================== -->
 
-  <div
-    id="chat"
-    class="screen chat hidden"
+  <main
+    id="chatScreen"
+    class="chat-screen"
   >
 
     <header class="topbar">
 
       <div class="brand">
+        <div class="brand-symbol">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
 
-        <span
-          class="brand-mark"
-          aria-hidden="true"
-        >
-          ✳
-        </span>
+        <div>
+          <div class="brand-name">
+            CHAT SERVER
+          </div>
 
-        <span class="brand-name">
-          CHAT SERVER
-        </span>
-
+          <div class="brand-subtitle">
+            PRIVATE ROOM
+          </div>
+        </div>
       </div>
 
-      <div
-        id="status"
-        class="status offline"
-      >
-
+      <div class="connection-area">
         <span
-          class="status-dot"
-          aria-hidden="true"
-        ></span>
-
-        <span id="statusText">
+          id="connectionStatus"
+          class="connection-status"
+          data-state="offline"
+        >
           OFFLINE
         </span>
-
       </div>
 
-      <ul
-        id="members"
-        class="members"
-        aria-label="Members"
-      ></ul>
+      <div class="top-actions">
 
-      <button
-        id="settingsBtn"
-        type="button"
-        class="icon-btn"
-        aria-label="Settings"
-        aria-expanded="false"
-      >
-        ⚙
-      </button>
+        <button
+          id="settingsButton"
+          class="icon-button"
+          type="button"
+          aria-label="Open settings"
+          title="Settings"
+        >
+          ⚙
+        </button>
 
-      <button
-        id="logoutBtn"
-        type="button"
-        class="icon-btn"
-        aria-label="Log out"
-      >
-        ⏻
-      </button>
+        <button
+          id="logoutButton"
+          class="logout-button"
+          type="button"
+        >
+          LOG OUT
+        </button>
+
+      </div>
 
     </header>
 
 
-    <main
-      id="messages"
-      class="messages"
-      aria-live="polite"
-    ></main>
+    <div class="chat-layout">
+
+      <!-- =================================================
+           SIDEBAR
+           ================================================= -->
+
+      <aside class="sidebar">
+
+        <div class="sidebar-heading">
+          <div>
+            <span class="sidebar-kicker">
+              MEMBERS
+            </span>
+
+            <h2>
+              Online
+            </h2>
+          </div>
+
+          <span
+            id="onlineCount"
+            class="online-count"
+          >
+            0
+          </span>
+        </div>
+
+        <div
+          id="membersList"
+          class="members-list"
+        ></div>
+
+        <div class="sidebar-user">
+
+          <span class="sidebar-user-label">
+            SIGNED IN AS
+          </span>
+
+          <strong id="currentUserLabel">
+            —
+          </strong>
+
+        </div>
+
+      </aside>
 
 
-    <form
-      id="composer"
-      class="composer"
-      autocomplete="off"
-    >
+      <!-- =================================================
+           CHAT MAIN
+           ================================================= -->
 
-      <input
-        id="messageInput"
-        type="text"
-        maxlength="2000"
-        autocomplete="off"
-        aria-label="Message"
-        placeholder="Message..."
-      >
+      <section class="chat-main">
 
-      <button
-        type="submit"
-        class="send-btn"
-      >
-        SEND
-        <span aria-hidden="true">➤</span>
-      </button>
+        <div
+          id="chatMessages"
+          class="chat-messages"
+          aria-live="polite"
+        ></div>
 
-    </form>
+        <form
+          id="messageForm"
+          class="message-form"
+        >
 
-  </div>
+          <div class="composer">
+
+            <textarea
+              id="messageInput"
+              rows="1"
+              maxlength="2000"
+              placeholder="Write a message…"
+              autocomplete="off"
+              spellcheck="true"
+            ></textarea>
+
+            <button
+              class="send-button"
+              type="submit"
+              aria-label="Send message"
+            >
+              ↑
+            </button>
+
+          </div>
+
+          <div class="composer-hint">
+            ENTER TO SEND · SHIFT + ENTER FOR NEW LINE
+          </div>
+
+        </form>
+
+      </section>
+
+    </div>
+
+  </main>
 
 
-  <!-- ============ SETTINGS OVERLAY ============ -->
-
-  <div
-    id="settingsOverlay"
-    class="overlay hidden"
-  ></div>
-
-
-  <!-- ============ SETTINGS ============ -->
+  <!-- =====================================================
+       SETTINGS
+       ===================================================== -->
 
   <aside
-    id="settings"
-    class="settings hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Settings"
+    id="settingsPanel"
+    class="settings-panel"
   >
 
-    <div class="settings-head">
+    <div class="settings-header">
 
-      <h2>SETTINGS</h2>
+      <div>
+        <span class="settings-kicker">
+          CHAT SERVER
+        </span>
+
+        <h2>
+          Settings
+        </h2>
+      </div>
 
       <button
-        id="settingsClose"
+        id="closeSettings"
+        class="close-button"
         type="button"
-        class="icon-btn"
         aria-label="Close settings"
       >
         ×
@@ -275,59 +347,42 @@
     </div>
 
 
-    <section class="settings-block">
+    <section class="settings-section">
 
-      <h3>APPEARANCE</h3>
+      <span class="settings-label">
+        APPEARANCE
+      </span>
 
-      <div
-        class="theme-list"
-        role="radiogroup"
-        aria-label="Theme"
-      >
+      <div class="theme-grid">
 
         <button
+          class="theme-choice"
+          data-theme-choice="pop"
           type="button"
-          class="theme-opt"
-          data-theme-value="pop"
-          role="radio"
-          aria-checked="true"
         >
-          <span
-            class="radio"
-            aria-hidden="true"
-          ></span>
-
-          Pop
+          <span class="theme-preview theme-preview-pop"></span>
+          <strong>Pop</strong>
+          <small>Bold & playful</small>
         </button>
 
         <button
+          class="theme-choice"
+          data-theme-choice="glass"
           type="button"
-          class="theme-opt"
-          data-theme-value="glass"
-          role="radio"
-          aria-checked="false"
         >
-          <span
-            class="radio"
-            aria-hidden="true"
-          ></span>
-
-          Liquid Glass
+          <span class="theme-preview theme-preview-glass"></span>
+          <strong>Glass</strong>
+          <small>Soft & modern</small>
         </button>
 
         <button
+          class="theme-choice"
+          data-theme-choice="matrix"
           type="button"
-          class="theme-opt"
-          data-theme-value="matrix"
-          role="radio"
-          aria-checked="false"
         >
-          <span
-            class="radio"
-            aria-hidden="true"
-          ></span>
-
-          Matrix
+          <span class="theme-preview theme-preview-matrix"></span>
+          <strong>Matrix</strong>
+          <small>Terminal mode</small>
         </button>
 
       </div>
@@ -335,142 +390,153 @@
     </section>
 
 
-    <hr class="settings-rule">
+    <section class="settings-section">
 
+      <span class="settings-label">
+        MESSAGES
+      </span>
 
-    <section class="settings-block">
+      <label class="setting-row">
 
-      <h3>CHAT</h3>
-
-      <button
-        type="button"
-        class="toggle-row"
-        data-setting="grouping"
-        aria-pressed="true"
-      >
         <span>
-          Message grouping
+          <strong>Group messages</strong>
+          <small>Collapse consecutive messages</small>
         </span>
 
-        <span class="toggle-state">
-          ON
-        </span>
-      </button>
+        <input
+          id="groupingToggle"
+          type="checkbox"
+        >
 
-      <button
-        type="button"
-        class="toggle-row"
-        data-setting="timestamps"
-        aria-pressed="true"
-      >
+        <span class="toggle"></span>
+
+      </label>
+
+      <label class="setting-row">
+
         <span>
-          Timestamps
+          <strong>Show timestamps</strong>
+          <small>Display message times</small>
         </span>
 
-        <span class="toggle-state">
-          ON
-        </span>
-      </button>
+        <input
+          id="timestampsToggle"
+          type="checkbox"
+        >
+
+        <span class="toggle"></span>
+
+      </label>
 
     </section>
 
 
-    <!-- ============ ADMIN WIPE ============ -->
-
     <section
       id="wipeSection"
-      class="settings-block wipe-section hidden"
+      class="settings-section danger-section"
     >
 
-      <h3>DANGER ZONE</h3>
+      <span class="settings-label">
+        ADMIN
+      </span>
 
-      <button
-        id="wipeBtn"
-        type="button"
-        class="wipe-btn"
-      >
-        <span>WIPE CHAT</span>
-        <span aria-hidden="true">⌫</span>
-      </button>
+      <div class="danger-box">
 
-      <p class="wipe-note">
-        Permanently deletes every saved message.
-      </p>
+        <div>
+          <strong>Wipe chat</strong>
+
+          <small>
+            Permanently delete all stored messages.
+          </small>
+        </div>
+
+        <button
+          id="wipeButton"
+          class="danger-button"
+          type="button"
+        >
+          WIPE
+        </button>
+
+      </div>
 
     </section>
 
   </aside>
 
 
-  <!-- ============ WIPE MODAL ============ -->
+  <!-- =====================================================
+       WIPE MODAL
+       ===================================================== -->
 
   <div
     id="wipeModal"
-    class="modal hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="wipeTitle"
+    class="modal"
   >
 
-    <div class="modal-card">
+    <div class="modal-backdrop"></div>
 
-      <div
-        class="modal-mark"
-        aria-hidden="true"
-      >
-        !
-      </div>
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wipeTitle"
+    >
+
+      <span class="modal-kicker">
+        ADMIN ACTION
+      </span>
 
       <h2 id="wipeTitle">
-        WIPE ENTIRE CHAT?
+        Wipe the chat?
       </h2>
 
       <p>
-        This permanently deletes every
-        message from the server.
-        This cannot be undone.
+        This permanently deletes the stored
+        chat history for everyone.
       </p>
 
-      <label
-        class="field-label"
-        for="wipePassword"
-      >
-        ADMIN PASSWORD
-      </label>
+      <form id="wipeForm">
 
-      <input
-        id="wipePassword"
-        type="password"
-        autocomplete="off"
-        placeholder="••••••••"
-      >
-
-      <p
-        id="wipeError"
-        class="login-error"
-        role="alert"
-        hidden
-      ></p>
-
-      <div class="modal-actions">
-
-        <button
-          id="wipeCancel"
-          type="button"
-          class="modal-cancel"
+        <label
+          class="field-label"
+          for="wipePassword"
         >
-          CANCEL
-        </button>
+          ADMIN PASSWORD
+        </label>
 
-        <button
-          id="wipeConfirm"
-          type="button"
-          class="modal-danger"
+        <input
+          id="wipePassword"
+          type="password"
+          autocomplete="off"
+          required
         >
-          WIPE EVERYTHING
-        </button>
 
-      </div>
+        <p
+          id="wipeError"
+          class="wipe-error"
+        ></p>
+
+        <div class="modal-actions">
+
+          <button
+            id="wipeCancel"
+            class="secondary-button"
+            type="button"
+          >
+            CANCEL
+          </button>
+
+          <button
+            class="danger-button confirm"
+            type="submit"
+          >
+            WIPE CHAT
+          </button>
+
+        </div>
+
+      </form>
 
     </div>
 
